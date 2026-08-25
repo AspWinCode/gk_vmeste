@@ -294,5 +294,20 @@
     });
   });
 
+  document.getElementById("quickRefreshBtn").addEventListener("click", loadDashboard);
+
+  document.getElementById("scrollToSignalsBtn").addEventListener("click", function () {
+    document.querySelector(".dashboard").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  document.getElementById("showAllSignalsBtn").addEventListener("click", function () {
+    state.direction = "";
+    state.period = "";
+    Array.prototype.forEach.call(document.querySelectorAll("#directionFilters .filter"), function (b) { b.classList.toggle("active", b.getAttribute("data-direction") === ""); });
+    Array.prototype.forEach.call(document.querySelectorAll("#periodFilters .filter"), function (b) { b.classList.remove("active"); });
+    applyFilters();
+    document.getElementById("signalsList").scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+
   loadDashboard();
 })();

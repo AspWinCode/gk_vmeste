@@ -102,5 +102,10 @@
     }
   });
 
+  document.getElementById("quickAnalyzeBtn").addEventListener("click", function () {
+    document.getElementById("mailForm").scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("mailText").focus();
+  });
+
   loadHistory();
 })();

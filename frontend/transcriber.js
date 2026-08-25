@@ -247,5 +247,10 @@
     }
   });
 
+  document.getElementById("quickUploadBtn").addEventListener("click", function () {
+    document.getElementById("uploadForm").scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("audioFile").click();
+  });
+
   fetchJobs();
 })();

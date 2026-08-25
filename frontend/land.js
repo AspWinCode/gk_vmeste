@@ -186,5 +186,10 @@
     if (res.ok) loadObjects();
   }
 
+  document.getElementById("quickAnalyzeBtn").addEventListener("click", function () {
+    document.getElementById("sourceText").scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("sourceText").focus();
+  });
+
   loadObjects();
 })();

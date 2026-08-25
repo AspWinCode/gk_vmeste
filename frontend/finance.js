@@ -234,5 +234,11 @@
     }
   });
 
+  document.getElementById("quickNewCalcBtn").addEventListener("click", function () {
+    document.getElementById("scenarioForm").scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("scenarioName").focus();
+    document.getElementById("scenarioName").select();
+  });
+
   loadProjects();
 })();

@@ -126,5 +126,7 @@
     if (res.ok) loadPrograms();
   }
 
+  document.getElementById("quickRefreshBtn").addEventListener("click", loadPrograms);
+
   loadPrograms();
 })();

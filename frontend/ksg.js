@@ -139,10 +139,12 @@
     loadStages();
   });
 
-  document.getElementById("refreshBtn").addEventListener("click", function () {
+  function refreshAll() {
     loadStages();
     loadSummary();
-  });
+  }
+  document.getElementById("refreshBtn").addEventListener("click", refreshAll);
+  document.getElementById("quickRefreshBtn").addEventListener("click", refreshAll);
 
   document.getElementById("addStageForm").addEventListener("submit", async function (e) {
     e.preventDefault();

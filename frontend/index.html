@@ -34,7 +34,7 @@
       <div class="mini-card">
         <h3>Быстрый запуск</h3>
         <p>Откройте сводку по проекту, запускайте ассистента или создайте поручение.</p>
-        <div class="hero-actions" style="margin-top:14px"><button class="btn btn-primary">Новая сводка</button></div>
+        <div class="hero-actions" style="margin-top:14px"><button class="btn btn-primary" id="quickRefreshBtn">Обновить сводку</button></div>
       </div>
     </aside>
 
@@ -43,7 +43,6 @@
         <div class="search"><span>⌘K</span><input type="text" value="Поиск по проектам, сигналам, поручениям и ассистентам" aria-label="Поиск по рабочему столу" /></div>
         <div class="top-actions">
           <button class="icon-btn" data-theme-toggle aria-label="Переключить тему">◐</button>
-          <button class="icon-btn" aria-label="Уведомления">🔔</button>
           <div class="avatar">ГК Вместе</div>
         </div>
       </header>
@@ -55,8 +54,7 @@
             <h1>Рабочий стол руководителя</h1>
             <p class="lead">Единая управленческая панель, где в одном экране видны статусы проектов, сигналы от ассистентов, финансовые отклонения, поручения и задачи на текущую дату.</p>
             <div class="hero-actions">
-              <button class="btn btn-primary">Открыть обзор дня</button>
-              <button class="btn btn-secondary">Сформировать отчет</button>
+              <button class="btn btn-primary" id="scrollToSignalsBtn">Открыть обзор дня</button>
             </div>
           </div>
           <div class="summary">
@@ -94,7 +92,7 @@
             <section class="panel section">
               <div class="section-head">
                 <div><h2>Критические сигналы</h2><p>То, что требует внимания руководителя сегодня</p></div>
-                <button class="btn btn-secondary">Все сигналы</button>
+                <button class="btn btn-secondary" id="showAllSignalsBtn">Все сигналы</button>
               </div>
               <div class="signal-list" id="signalsList"><div class="footer-note">Загрузка...</div></div>
             </section>

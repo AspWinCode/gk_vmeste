@@ -104,6 +104,7 @@
   }
 
   document.getElementById("refreshBtn").addEventListener("click", loadSummary);
+  document.getElementById("quickRefreshBtn").addEventListener("click", loadSummary);
 
   document.getElementById("actualForm").addEventListener("submit", async function (e) {
     e.preventDefault();
