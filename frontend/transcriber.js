@@ -246,7 +246,7 @@
     try {
       var res = await Auth.apiFetch("/transcriber/jobs", { method: "POST", body: formData });
       var data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Не удалось загрузить файл");
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : JSON.stringify(data.error) || "Не удалось загрузить файл");
       fileInput.value = "";
       document.getElementById("participantEmails").value = "";
       state.selectedId = data.id;

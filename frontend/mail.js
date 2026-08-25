@@ -101,7 +101,7 @@
     try {
       var res = await Auth.apiFetch("/mail/analyze", { method: "POST", body: payload });
       var data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Не удалось разобрать письмо");
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : JSON.stringify(data.error) || "Не удалось разобрать письмо");
       renderResult(data.message, data.tasks);
       document.getElementById("mailForm").reset();
       await loadHistory();

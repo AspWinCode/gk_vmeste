@@ -34,7 +34,7 @@
     try {
       var res = await Auth.apiFetch("/support/programs/analyze", { method: "POST", body: url ? { url: url } : { text: text } });
       var data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Не удалось проанализировать источник");
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : JSON.stringify(data.error) || "Не удалось проанализировать источник");
       document.getElementById("progTitle").value = data.title || "";
       document.getElementById("progType").value = data.type || "Иное";
       document.getElementById("progRegion").value = data.region || "";

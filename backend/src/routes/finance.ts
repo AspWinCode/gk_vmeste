@@ -125,19 +125,27 @@ financeRouter.post("/scenarios/:id/ai-review", async (req, res) => {
   const scenario = await prisma.financeScenario.findUnique({ where: { id: req.params.id } });
   if (!scenario) return res.status(404).json({ error: "Сценарий не найден" });
 
-  const aiRiskSummary = await generateFinanceRiskSummary({
-    usageType: scenario.usageType,
-    saleAreaSqm: scenario.saleAreaSqm ?? 0,
-    pricePerSqm: scenario.pricePerSqm ?? 0,
-    costPerSqm: scenario.costPerSqm ?? 0,
-    durationMonths: scenario.durationMonths ?? 0,
-    revenue: scenario.revenue ?? 0,
-    costs: scenario.costs ?? 0,
-    margin: scenario.margin ?? 0,
-    irr: scenario.irr,
-    npv: scenario.npv ?? 0,
-    paybackMonths: scenario.paybackMonths,
-  });
+  let aiRiskSummary: string;
+  try {
+    aiRiskSummary = await generateFinanceRiskSummary({
+      usageType: scenario.usageType,
+      saleAreaSqm: scenario.saleAreaSqm ?? 0,
+      pricePerSqm: scenario.pricePerSqm ?? 0,
+      costPerSqm: scenario.costPerSqm ?? 0,
+      durationMonths: scenario.durationMonths ?? 0,
+      revenue: scenario.revenue ?? 0,
+      costs: scenario.costs ?? 0,
+      margin: scenario.margin ?? 0,
+      irr: scenario.irr,
+      npv: scenario.npv ?? 0,
+      paybackMonths: scenario.paybackMonths,
+    });
+  } catch (err) {
+    console.error("[finance] ai-review не удался:", err);
+    return res.status(502).json({
+      error: "Не удалось получить оценку рисков от Claude — проверьте ANTHROPIC_API_KEY в .env на сервере.",
+    });
+  }
 
   const updated = await prisma.financeScenario.update({
     where: { id: scenario.id },

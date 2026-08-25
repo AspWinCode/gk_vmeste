@@ -41,7 +41,7 @@
     try {
       var res = await Auth.apiFetch("/land/objects/analyze", { method: "POST", body: url ? { url: url } : { text: text } });
       var data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Не удалось проанализировать источник");
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : JSON.stringify(data.error) || "Не удалось проанализировать источник");
       document.getElementById("objTitle").value = data.title || "";
       document.getElementById("objRegion").value = data.region || "";
       document.getElementById("objArea").value = data.areaHectares ?? "";
@@ -72,7 +72,7 @@
         body: dateFrom ? { publishDateFrom: dateFrom } : {},
       });
       var data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Не удалось получить данные с госторгов");
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : JSON.stringify(data.error) || "Не удалось получить данные с госторгов");
       if (data.note) {
         resultsBox.innerHTML = '<div class="footer-note">' + esc(data.note) + "</div>";
         return;

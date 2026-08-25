@@ -1,3 +1,6 @@
+// Должен идти раньше любых роутов: патчит Express 4, чтобы отклонённые промисы в async-хендлерах
+// долетали до error-миддлвара ниже, а не молча вешали запрос (Express 4 без этого не умеет).
+import "express-async-errors";
 import express from "express";
 import cors from "cors";
 import { env } from "./lib/env";

@@ -11,9 +11,43 @@ const client = new Anthropic({ apiKey: env.anthropicApiKey, baseURL: env.anthrop
  * пользователь сам даёт ссылку на конкретное объявление/документ или вставляет текст —
  * это обычный сценарий "проанализируй то, на что я указал", а не скрапинг сайта целиком.
  */
+// Базовая защита от SSRF: сервер выполняет fetch по URL, который прислал пользователь
+// (объявление/документ). На общем VPS с чужими проектами (Redis, MariaDB, внутренние
+// бэкенды на 127.0.0.1/localhost) нельзя пускать туда произвольные хосты — иначе
+// авторизованный пользователь этого приложения мог бы прощупывать чужие внутренние сервисы.
+// Не защищает от DNS rebinding (для этого нужна проверка резолвленного IP отдельно),
+// но отсекает всё очевидное.
+const BLOCKED_HOSTNAME_PATTERNS = [
+  /^localhost$/i,
+  /^127\./,
+  /^0\.0\.0\.0$/,
+  /^10\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^192\.168\./,
+  /^169\.254\./, // link-local, включая облачные metadata-эндпоинты
+  /^\[?::1\]?$/,
+  /^\[?fe80:/i,
+  /^\[?fc[0-9a-f]{2}:/i,
+  /^\[?fd[0-9a-f]{2}:/i,
+];
+
+function assertSafeUrl(rawUrl: string): URL {
+  const url = new URL(rawUrl);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("Поддерживаются только http/https ссылки");
+  }
+  if (BLOCKED_HOSTNAME_PATTERNS.some((re) => re.test(url.hostname))) {
+    throw new Error("Ссылки на локальные/внутренние адреса не поддерживаются");
+  }
+  return url;
+}
+
 export async function fetchPageText(url: string): Promise<string> {
-  const res = await fetch(url, { headers: { "User-Agent": "VmesteAI-Assistant/0.1" } });
-  if (!res.ok) throw new Error(`Не удалось загрузить страницу: HTTP ${res.status}`);
+  const safeUrl = assertSafeUrl(url);
+  // redirect:"manual" — не идём по редиректам автоматически (иначе внешний "безопасный" URL
+  // мог бы перенаправить на внутренний адрес и обойти проверку выше).
+  const res = await fetch(safeUrl, { headers: { "User-Agent": "VmesteAI-Assistant/0.1" }, redirect: "manual" });
+  if (!res.ok) throw new Error(`Не удалось загрузить страницу: HTTP ${res.status || "редирект заблокирован"}`);
   const html = await res.text();
   const text = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")

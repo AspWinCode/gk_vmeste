@@ -18,9 +18,25 @@ function computeStatus(deviationDays: number): string {
   return "критично";
 }
 
+// Если факта ещё нет, но плановая дата уже прошла — этап реально просрочен, а не "по плану".
+// deviationDays у стадии без факта хранится нулём с момента создания и не обновляется сам
+// по себе с течением времени, поэтому здесь считаем "на сейчас", а не полагаемся на кэш в БД.
 function deviationInDays(plan: Date, fact: Date | null): number {
-  if (!fact) return 0;
-  return Math.round((fact.getTime() - plan.getTime()) / (1000 * 60 * 60 * 24));
+  if (fact) return Math.round((fact.getTime() - plan.getTime()) / (1000 * 60 * 60 * 24));
+  const today = new Date();
+  if (today <= plan) return 0;
+  return Math.round((today.getTime() - plan.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+// Пересчитывает отклонение/статус "на сейчас" для этапов без факта — иначе просроченный,
+// но не отмеченный вручную этап так и висел бы вечно со статусом "по плану".
+function withLiveDeviation<T extends { planDate: Date; factDate: Date | null; deviationDays: number; status: string }>(
+  stage: T
+): T {
+  if (stage.factDate) return stage;
+  const deviationDays = deviationInDays(stage.planDate, null);
+  if (deviationDays === stage.deviationDays) return stage;
+  return { ...stage, deviationDays, status: computeStatus(deviationDays) };
 }
 
 // GET /api/ksg/stages?projectId=... — сводная таблица этапов; без projectId — по всем ~15 проектам.
@@ -34,13 +50,13 @@ ksgRouter.get("/stages", async (req, res) => {
     orderBy: { planDate: "asc" },
     include: { project: { select: { name: true } } },
   });
-  res.json(stages);
+  res.json(stages.map(withLiveDeviation));
 });
 
 // GET /api/ksg/summary — KPI-карточки на экране «Контроль КСГ»: критические отставания,
 // максимальное отклонение, доля актуализированных этапов.
 ksgRouter.get("/summary", async (_req, res) => {
-  const stages = await prisma.ksgStage.findMany();
+  const stages = (await prisma.ksgStage.findMany()).map(withLiveDeviation);
   const total = stages.length;
   const critical = stages.filter((s) => s.status === "критично").length;
   const maxDeviation = stages.reduce((max, s) => Math.max(max, s.deviationDays), 0);

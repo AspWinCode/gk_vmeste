@@ -11,7 +11,9 @@ function required(name: string, fallback?: string): string {
 export const env = {
   port: Number(process.env.PORT ?? 4000),
   nodeEnv: process.env.NODE_ENV ?? "development",
-  jwtSecret: required("JWT_SECRET", "dev-secret-change-me"),
+  // Без fallback намеренно: если переменная потеряется, сервер должен явно упасть при
+  // старте, а не молча подписывать токены известным из исходников секретом.
+  jwtSecret: required("JWT_SECRET"),
   databaseUrl: required("DATABASE_URL"),
   redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
