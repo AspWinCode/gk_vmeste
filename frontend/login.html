@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Вход — Вместе AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    .auth-screen{min-height:100dvh;display:grid;place-items:center;padding:24px}
+    .auth-card{width:min(420px,100%);padding:32px}
+    .auth-card .brand{margin-bottom:20px}
+    .auth-card h1{font-size:var(--text-lg)}
+    .auth-tabs{display:flex;gap:8px;margin-bottom:18px}
+    .auth-tabs .tab{flex:1}
+    .auth-error{padding:12px 14px;border-radius:14px;background:var(--color-red-soft);color:#9E3D3D;font-size:var(--text-sm);display:none}
+    .auth-error.visible{display:block}
+    .auth-submit{width:100%;justify-content:center;margin-top:6px}
+  </style>
+</head>
+<body>
+  <div class="auth-screen">
+    <div class="panel auth-card">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 17V7h3.2l3.8 5.1L15.8 7H19v10h-2.5v-5.9L12 16.9 7.5 11.2V17H5Z" fill="white"/></svg></div>
+        <div><div class="brand-title">ВМЕСТЕ AI</div><div class="brand-sub">единое пространство ассистентов</div></div>
+      </div>
+
+      <div class="auth-tabs">
+        <button class="tab active" data-mode="login" type="button">Вход</button>
+        <button class="tab" data-mode="register" type="button">Регистрация</button>
+      </div>
+
+      <div id="authError" class="auth-error"></div>
+
+      <form id="authForm" class="stack">
+        <div class="field" id="nameField" style="display:none">
+          <label>Имя</label>
+          <input class="input" type="text" id="name" autocomplete="name" />
+        </div>
+        <div class="field">
+          <label>Рабочая почта</label>
+          <input class="input" type="email" id="email" autocomplete="username" required />
+        </div>
+        <div class="field">
+          <label>Пароль</label>
+          <input class="input" type="password" id="password" autocomplete="current-password" required minlength="8" />
+        </div>
+        <button class="btn btn-primary auth-submit" type="submit" id="submitBtn">Войти</button>
+      </form>
+      <p class="footer-note" style="margin-top:16px">Первый вход в систему — используйте вкладку «Регистрация», чтобы создать учётную запись.</p>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    var mode = "login";
+    var tabs = document.querySelectorAll(".auth-tabs .tab");
+    var nameField = document.getElementById("nameField");
+    var submitBtn = document.getElementById("submitBtn");
+    var errorBox = document.getElementById("authError");
+
+    tabs.forEach(function (tab) {
+      tab.addEventListener("click", function () {
+        mode = tab.dataset.mode;
+        tabs.forEach(function (t) { t.classList.toggle("active", t === tab); });
+        nameField.style.display = mode === "register" ? "grid" : "none";
+        submitBtn.textContent = mode === "register" ? "Зарегистрироваться" : "Войти";
+        errorBox.classList.remove("visible");
+      });
+    });
+
+    document.getElementById("authForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      errorBox.classList.remove("visible");
+      var payload = {
+        email: document.getElementById("email").value,
+        password: document.getElementById("password").value,
+      };
+      if (mode === "register") payload.name = document.getElementById("name").value;
+
+      submitBtn.disabled = true;
+      try {
+        var res = await fetch(window.API_BASE + "/auth/" + mode, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        var data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error && data.error.formErrors ? data.error.formErrors.join(", ") : (data.error || "Не удалось войти"));
+        }
+        Auth.setSession(data.token, data.user);
+        window.location.href = "index.html";
+      } catch (err) {
+        errorBox.textContent = err.message || "Произошла ошибка. Проверьте, что backend запущен.";
+        errorBox.classList.add("visible");
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

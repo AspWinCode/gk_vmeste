@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Каталог ассистентов — Вместе AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 17V7h3.2l3.8 5.1L15.8 7H19v10h-2.5v-5.9L12 16.9 7.5 11.2V17H5Z" fill="white"/></svg></div>
+        <div><div class="brand-title">ВМЕСТЕ AI</div><div class="brand-sub">единое пространство ассистентов</div></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Основное</div>
+        <a class="nav-item" href="index.html"><div class="nav-left"><div class="dot"></div><span class="text">Рабочий стол</span></div><span class="count">12</span></a>
+        <a class="nav-item active" href="assistants.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Каталог ассистентов</span></div><span class="count">9</span></a>
+        <a class="nav-item" href="finance.html"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Финансовый аналитик</span></div></a>
+        <a class="nav-item" href="transcriber.html"><div class="nav-left"><div class="dot" style="background:#F2CA00"></div><span class="text">Транскрибатор-референт</span></div></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Контроль и мониторинг</div>
+        <a class="nav-item" href="ksg.html"><div class="nav-left"><div class="dot" style="background:#A13F3F"></div><span class="text">Контроль КСГ</span></div></a>
+        <a class="nav-item" href="land.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Земля и объекты</span></div></a>
+        <a class="nav-item" href="support.html"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Меры поддержки</span></div></a>
+        <a class="nav-item" href="finance-monitor.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Финмониторинг</span></div></a>
+        <a class="nav-item" href="mail.html"><div class="nav-left"><div class="dot" style="background:#002D72"></div><span class="text">Разборщик почты</span></div></a>
+      </div>
+      <div class="mini-card">
+        <h3>Быстрый запуск</h3>
+        <p>Создайте нового ассистента или запустите сценарий.</p>
+        <div class="hero-actions" style="margin-top:14px"><button class="btn btn-primary">Новый ассистент</button></div>
+      </div>
+    </aside>
+
+    <div class="content">
+      <header class="topbar">
+        <div class="search"><span>⌘K</span><input type="text" value="Поиск по названию, роли, данным и тегам" aria-label="Поиск по каталогу" /></div>
+        <div class="top-actions">
+          <button class="icon-btn" data-theme-toggle aria-label="Переключить тему">◐</button>
+          <button class="icon-btn" aria-label="Уведомления">🔔</button>
+          <div class="avatar">ГК Вместе</div>
+        </div>
+      </header>
+
+      <main class="main">
+        <section class="panel hero">
+          <div>
+            <div class="eyebrow">Каталог ролей и сценариев</div>
+            <h1>Ассистенты по функциям бизнеса</h1>
+            <p class="lead">Каталог сгруппирован по направлениям, чтобы команда быстро понимала, какой ассистент нужен для коммуникаций, контроля сроков, недвижимости, финансовой модели или мониторинга мер поддержки.</p>
+            <div class="hero-actions">
+              <button class="btn btn-primary">Добавить ассистента</button>
+              <button class="btn btn-secondary">Настроить роли</button>
+            </div>
+          </div>
+          <div class="summary">
+            <div class="summary-item"><strong id="statTotal">—</strong><span>ассистентов в каталоге</span></div>
+            <div class="summary-item"><strong id="statActive">—</strong><span>активны и в работе</span></div>
+            <div class="summary-item"><strong id="statSetup">—</strong><span>требуют настройки</span></div>
+          </div>
+        </section>
+        <div id="apiWarning" class="footer-note" style="display:none;color:#9E3D3D">Не удаётся подключиться к backend по адресу <code id="apiWarningUrl"></code>. Проверьте, что API запущен (см. backend/README.md).</div>
+
+        <section class="panel toolbar">
+          <div class="filters" id="tagFilters"></div>
+          <div class="filters" id="statusFilters" style="justify-content:flex-end"></div>
+        </section>
+
+        <section class="catalog">
+          <div class="panel grid-panel">
+            <div class="section-head">
+              <div><h2>Карточки ассистентов</h2><p>Каждая карточка показывает задачу, тип входных данных и готовность к работе.</p></div>
+            </div>
+
+            <div class="assistant-grid" id="assistantGrid"><div class="footer-note">Загрузка...</div></div>
+          </div>
+
+          <aside class="panel side-panel">
+            <div class="side-block">
+              <h3>Логика карточки</h3>
+              <p>В каталоге карточка сразу отвечает на 4 вопроса: что делает ассистент, какие данные принимает, что возвращает и готов ли он к запуску.</p>
+            </div>
+            <div class="side-block">
+              <h3>Требуют настройки</h3>
+              <div class="stack" id="setupList"><div class="footer-note">Загрузка...</div></div>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script>Auth.requireAuth();</script>
+  <script src="app.js"></script>
+  <script src="assistants.js"></script>
+</body>
+</html>

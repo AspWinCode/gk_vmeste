@@ -1,0 +1,22 @@
+# Секреты и локальные окружения
+.env
+.env.local
+backend/.env
+
+# Зависимости и сборка
+node_modules/
+backend/dist/
+
+# Загруженные файлы (аудио, экспортированные протоколы)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Промежуточные материалы из исходного архива макетов — не часть проекта,
+# итоговый фронтенд собран в frontend/
+artifacts/
+makety/
+Новая папка/
+
+# ОС/редакторы
+.DS_Store
+Thumbs.db

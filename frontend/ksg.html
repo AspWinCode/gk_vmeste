@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Контроль КСГ — Вместе AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 17V7h3.2l3.8 5.1L15.8 7H19v10h-2.5v-5.9L12 16.9 7.5 11.2V17H5Z" fill="white"/></svg></div>
+        <div><div class="brand-title">ВМЕСТЕ AI</div><div class="brand-sub">единое пространство ассистентов</div></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Основное</div>
+        <a class="nav-item" href="index.html"><div class="nav-left"><div class="dot"></div><span class="text">Рабочий стол</span></div><span class="count">12</span></a>
+        <a class="nav-item" href="assistants.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Каталог ассистентов</span></div><span class="count">9</span></a>
+        <a class="nav-item" href="finance.html"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Финансовый аналитик</span></div></a>
+        <a class="nav-item" href="transcriber.html"><div class="nav-left"><div class="dot" style="background:#F2CA00"></div><span class="text">Транскрибатор-референт</span></div></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Контроль и мониторинг</div>
+        <a class="nav-item active" href="ksg.html"><div class="nav-left"><div class="dot" style="background:#A13F3F"></div><span class="text">Контроль КСГ</span></div></a>
+        <a class="nav-item" href="land.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Земля и объекты</span></div></a>
+        <a class="nav-item" href="support.html"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Меры поддержки</span></div></a>
+        <a class="nav-item" href="finance-monitor.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Финмониторинг</span></div></a>
+        <a class="nav-item" href="mail.html"><div class="nav-left"><div class="dot" style="background:#002D72"></div><span class="text">Разборщик почты</span></div></a>
+      </div>
+      <div class="mini-card">
+        <h3>Быстрый запуск</h3>
+        <p>Обновите статус графика или зафиксируйте новое отклонение.</p>
+        <div class="inline-actions" style="margin-top:14px"><button class="btn btn-primary">Обновить статус</button></div>
+      </div>
+    </aside>
+
+    <div class="content">
+      <header class="topbar">
+        <div class="search"><span>⌘K</span><input type="text" value="Поиск по этапам, проектам и отклонениям" aria-label="Поиск по модулю" /></div>
+        <div class="top-actions">
+          <button class="icon-btn" data-theme-toggle aria-label="Переключить тему">◐</button>
+          <button class="icon-btn" aria-label="Уведомления">🔔</button>
+          <div class="avatar">ГК Вместе</div>
+        </div>
+      </header>
+
+      <main class="main">
+        <section class="panel hero">
+          <div>
+            <div class="eyebrow">Экран ассистента</div>
+            <h1>Контроль КСГ</h1>
+            <p class="lead">Ассистент подсвечивает отставания на текущую дату, фиксирует изменения по этапам и помогает держать контроль над календарно-сетевым графиком проекта.</p>
+            <div class="hero-actions">
+              <button class="btn btn-primary" id="refreshBtn">Обновить статус</button>
+              <button class="btn btn-secondary" id="importBtn">Импорт из Excel</button>
+              <input type="file" id="importFile" accept=".xlsx" style="display:none" />
+            </div>
+          </div>
+          <div class="summary">
+            <div class="summary-item"><strong id="statCritical">—</strong><span>критических отставания</span></div>
+            <div class="summary-item"><strong id="statMaxDeviation">—</strong><span>максимальное отклонение, дней</span></div>
+            <div class="summary-item"><strong id="statUpdated">—</strong><span>этапов актуализированы за 7 дней</span></div>
+          </div>
+        </section>
+        <div id="apiWarning" class="footer-note" style="display:none;color:#9E3D3D">Не удаётся подключиться к backend по адресу <code id="apiWarningUrl"></code>. Проверьте, что API запущен (см. backend/README.md).</div>
+        <div id="importResult" class="footer-note" style="display:none"></div>
+
+        <section class="grid-2">
+          <section class="panel section">
+            <div class="section-head">
+              <div><h2>Этапы графика</h2><p>План, факт и отклонение — по всем проектам или по одному</p></div>
+              <select class="select" id="ksgProjectFilter" style="max-width:220px"><option value="">Все проекты</option></select>
+            </div>
+
+            <form id="addStageForm" class="form-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:14px">
+              <select class="select" id="stageProject" required></select>
+              <select class="select" id="stageType">
+                <option>стройка</option><option>РНВ/РНС</option><option>финансирование</option><option>продажи</option>
+              </select>
+              <input class="input" id="stageName" placeholder="Название этапа" required />
+              <input class="input" id="stagePlanDate" type="date" required />
+              <button class="btn btn-primary" type="submit" style="grid-column:1/-1;justify-content:center">Добавить этап</button>
+            </form>
+
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Этап</th><th>Проект</th><th>План</th><th>Факт</th><th>Отклонение</th><th>Статус</th></tr></thead>
+                <tbody id="stagesTableBody"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="stack">
+            <section class="panel section">
+              <div class="section-head"><div><h2>Сигналы по графику</h2><p>Что требует вмешательства</p></div></div>
+              <div class="list" id="signalsList"><div class="footer-note">Загрузка...</div></div>
+            </section>
+            <section class="panel section">
+              <div class="section-head"><div><h2>Недавно обновлённые</h2><p>Последние изменения по этапам</p></div></div>
+              <div class="timeline" id="recentList"><div class="footer-note">Загрузка...</div></div>
+            </section>
+            <section class="panel section">
+              <div class="section-head"><div><h2>Рекомендуемые действия</h2><p>Что нужно сделать по итогам сигнала</p></div></div>
+              <div class="list">
+                <article class="row-card"><div><strong>Подтвердить новый базовый график</strong><span>После сверки с командой проекта зафиксировать обновленные даты.</span></div><span class="status-chip status-ok">шаг 1</span></article>
+                <a class="row-card" href="finance.html" style="color:inherit"><div><strong>Передать влияние в финмодель</strong><span>Отправить отклонение в финансовый блок для пересчета сценария.</span></div><span class="status-chip status-wait">шаг 2</span></a>
+                <a class="row-card" href="index.html" style="color:inherit"><div><strong>Сформировать поручение руководителю проекта</strong><span>Поставить задачу по устранению причины отставания и сроку ответа.</span></div><span class="status-chip status-risk">шаг 3</span></a>
+              </div>
+            </section>
+          </section>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script>Auth.requireAuth();</script>
+  <script src="app.js"></script>
+  <script src="ksg.js"></script>
+</body>
+</html>

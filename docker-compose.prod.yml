@@ -1,0 +1,65 @@
+version: "3.9"
+
+# Продакшн-развёртывание на VPS: nginx (фронтенд + прокси /api) + backend API +
+# отдельный процесс воркера очереди + Postgres + Redis. Запуск:
+#   docker compose -f docker-compose.prod.yml up -d --build
+# Перед первым запуском создать .env в корне (см. .env.example) и один раз накатить
+# миграции + сид (см. DEPLOY.md).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vmeste
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vmeste}
+      POSTGRES_DB: vmeste_ai
+    volumes:
+      - vmeste_pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://vmeste:${POSTGRES_PASSWORD:-vmeste}@postgres:5432/vmeste_ai
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - vmeste_uploads:/app/uploads
+
+  worker:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    command: ["node", "dist/jobs/worker.js"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://vmeste:${POSTGRES_PASSWORD:-vmeste}@postgres:5432/vmeste_ai
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - vmeste_uploads:/app/uploads
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+volumes:
+  vmeste_pgdata:
+  vmeste_uploads:

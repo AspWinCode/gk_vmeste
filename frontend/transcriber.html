@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Транскрибатор-референт — Вместе AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 17V7h3.2l3.8 5.1L15.8 7H19v10h-2.5v-5.9L12 16.9 7.5 11.2V17H5Z" fill="white"/></svg></div>
+        <div><div class="brand-title">ВМЕСТЕ AI</div><div class="brand-sub">единое пространство ассистентов</div></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Основное</div>
+        <a class="nav-item" href="index.html"><div class="nav-left"><div class="dot"></div><span class="text">Рабочий стол</span></div><span class="count">12</span></a>
+        <a class="nav-item" href="assistants.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Каталог ассистентов</span></div><span class="count">9</span></a>
+        <a class="nav-item" href="finance.html"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Финансовый аналитик</span></div></a>
+        <a class="nav-item active" href="transcriber.html"><div class="nav-left"><div class="dot" style="background:#F2CA00"></div><span class="text">Транскрибатор-референт</span></div></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Контроль и мониторинг</div>
+        <a class="nav-item" href="ksg.html"><div class="nav-left"><div class="dot" style="background:#A13F3F"></div><span class="text">Контроль КСГ</span></div></a>
+        <a class="nav-item" href="land.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Земля и объекты</span></div></a>
+        <a class="nav-item" href="support.html"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Меры поддержки</span></div></a>
+        <a class="nav-item" href="finance-monitor.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Финмониторинг</span></div></a>
+        <a class="nav-item" href="mail.html"><div class="nav-left"><div class="dot" style="background:#002D72"></div><span class="text">Разборщик почты</span></div></a>
+      </div>
+      <div class="mini-card">
+        <h3>Быстрый запуск</h3>
+        <p>Откройте новый файл, чтобы получить расшифровку, саммари и поручения.</p>
+        <div class="inline-actions" style="margin-top:14px"><button class="btn btn-primary">Загрузить аудио</button></div>
+      </div>
+    </aside>
+
+    <div class="content">
+      <header class="topbar">
+        <div class="search"><span>⌘K</span><input type="text" value="Поиск по файлам, поручениям и фрагментам речи" aria-label="Поиск по модулю" /></div>
+        <div class="top-actions">
+          <button class="icon-btn" data-theme-toggle aria-label="Переключить тему">◐</button>
+          <button class="icon-btn" aria-label="Уведомления">🔔</button>
+          <div class="avatar">ГК Вместе</div>
+        </div>
+      </header>
+
+      <main class="main">
+        <section class="panel hero">
+          <div>
+            <div class="eyebrow">Экран ассистента</div>
+            <h1>Транскрибатор-референт</h1>
+            <p class="lead">Рабочий интерфейс для загрузки аудио, распознавания речи, подготовки краткого содержания и автоматического выделения поручений по совещаниям, звонкам и интервью.</p>
+          </div>
+          <div class="summary" id="heroStats">
+            <div class="summary-item"><strong id="statTotal">—</strong><span>файлов обработано всего</span></div>
+            <div class="summary-item"><strong id="statActive">—</strong><span>файлов сейчас в очереди</span></div>
+            <div class="summary-item"><strong id="statTasks">—</strong><span>поручений извлечено</span></div>
+          </div>
+        </section>
+        <div id="apiWarning" class="footer-note" style="display:none;color:#9E3D3D">Не удаётся подключиться к backend по адресу <code id="apiWarningUrl"></code>. Проверьте, что API запущен (см. backend/README.md).</div>
+
+        <section class="workspace">
+          <aside class="panel left-panel">
+            <div class="section-title"><div><h2>Новая загрузка</h2><p>Файл, тип материала и участники встречи</p></div></div>
+            <form id="uploadForm" class="stack">
+              <div class="field">
+                <label>Аудиофайл</label>
+                <div class="dropzone">
+                  <h3>Выберите файл</h3>
+                  <p>Поддержка: mp3, wav, m4a. После обработки будут доступны текст, саммари и список поручений.</p>
+                  <input type="file" id="audioFile" name="audio" accept="audio/*" required style="margin-top:12px;width:100%" />
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Тип материала</label>
+                <select class="select" id="meetingType" name="meetingType">
+                  <option>Совещание</option><option>Интервью</option><option>Звонок</option><option>Диктовка</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>Email участников (через запятую)</label>
+                <input class="input" id="participantEmails" name="participantEmails" placeholder="ivanov@vmeste.local, petrov@vmeste.local" />
+              </div>
+
+              <button class="btn btn-primary" type="submit" id="uploadBtn" style="justify-content:center">Загрузить и обработать</button>
+              <div id="uploadError" class="footer-note" style="color:#9E3D3D;display:none"></div>
+
+              <div class="field">
+                <label>Очередь обработки</label>
+                <div class="stack" id="queueList">
+                  <div class="footer-note">Загрузок пока нет.</div>
+                </div>
+              </div>
+            </form>
+          </aside>
+
+          <section class="panel center-panel">
+            <div class="section-title"><div><h2>Результат обработки</h2><p id="jobSubtitle">Выберите файл из очереди слева</p></div><span class="status-chip status-wait" id="jobStatusChip">нет выбора</span></div>
+
+            <div id="jobEmpty" class="empty">Загрузите аудиофайл или выберите готовую задачу из очереди, чтобы увидеть саммари, расшифровку и поручения.</div>
+
+            <div id="jobDetail" style="display:none">
+              <div class="toolbar-line">
+                <div class="inline-actions" id="jobMetaPills"></div>
+                <div class="inline-actions">
+                  <button class="btn btn-secondary" id="sendBtn" disabled>Отправить участникам</button>
+                  <button class="btn btn-primary" id="exportBtn" disabled>Скачать .docx</button>
+                </div>
+              </div>
+
+              <div class="stack">
+                <div class="summary-card">
+                  <strong>Краткое содержание</strong>
+                  <span id="summaryText">—</span>
+                </div>
+
+                <div class="transcript-card">
+                  <strong>Ключевые тезисы</strong>
+                  <div class="transcript-body" id="keyPointsList"></div>
+                </div>
+
+                <div class="transcript-card">
+                  <strong>Расшифровка</strong>
+                  <span id="transcriptText" style="white-space:pre-wrap">—</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <aside class="panel right-panel">
+            <div class="section-title"><div><h2>Поручения и история</h2><p>Что делать дальше по результатам</p></div></div>
+
+            <div class="stack" style="margin-top:0">
+              <div>
+                <div class="section-title"><div><h2 style="font-size:var(--text-base)">Извлечённые поручения</h2></div></div>
+                <div class="task-list" id="taskList"><div class="footer-note">Выберите обработанный файл.</div></div>
+              </div>
+
+              <div>
+                <div class="section-title"><div><h2 style="font-size:var(--text-base)">История запусков</h2></div></div>
+                <div class="history-list" id="historyList"><div class="footer-note">Пока нет истории.</div></div>
+              </div>
+
+              <div class="footer-note">Поручения автоматически появляются в <a href="index.html">рабочем столе руководителя</a>. Готовый сценарий можно передать в <a href="finance.html">финансовый блок</a> или <a href="ksg.html">контроль КСГ</a>.</div>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script>Auth.requireAuth();</script>
+  <script src="app.js"></script>
+  <script src="transcriber.js"></script>
+</body>
+</html>

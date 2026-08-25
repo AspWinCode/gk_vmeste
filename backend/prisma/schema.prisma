@@ -1,0 +1,245 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  EXECUTIVE // руководитель
+  ANALYST // аналитик
+  PROJECT_OFFICE // офис проекта
+  OPERATOR // оператор ассистента
+  ADMIN
+}
+
+enum AssistantStatus {
+  ACTIVE
+  SETUP
+  NEW
+}
+
+enum AssistantKey {
+  TRANSCRIBER
+  PLANNER
+  FINANCE_ANALYST
+  KSG_CONTROL
+  LAND_SEARCH
+  SUPPORT_MONITOR
+  FINANCE_MONITOR
+  SMM_TELEGRAM
+  SMM_INSTAGRAM
+  MAIL_PARSER
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum TranscriptionStatus {
+  QUEUED
+  TRANSCRIBING
+  SUMMARIZING
+  DONE
+  FAILED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         UserRole @default(OPERATOR)
+  createdAt    DateTime @default(now())
+
+  tasksOwned       Task[]            @relation("TaskOwner")
+  transcriptionJobs TranscriptionJob[] @relation("JobCreatedBy")
+  auditLogs        AuditLog[]
+}
+
+model Assistant {
+  id          String          @id @default(cuid())
+  key         AssistantKey    @unique
+  name        String
+  description String
+  inputHint   String
+  outputHint  String
+  status      AssistantStatus @default(SETUP)
+  tags        String[]
+  createdAt   DateTime        @default(now())
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  businessLine String  // ГК ВМЕСТЕ / МИРРА / Nomination
+  region      String?
+  createdAt   DateTime @default(now())
+
+  ksgStages        KsgStage[]
+  financeScenarios FinanceScenario[]
+  transcriptions   TranscriptionJob[]
+  tasks            Task[]
+  landObjects      LandObject[]
+  financialActuals FinancialActual[]
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  status      TaskStatus @default(OPEN)
+  dueDate     DateTime?
+  source      String? // "transcriber:<jobId>" | "manual" | "ksg:<stageId>"
+
+  project    Project? @relation(fields: [projectId], references: [id])
+  projectId  String?
+  owner      User?    @relation("TaskOwner", fields: [ownerId], references: [id])
+  ownerId    String?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model TranscriptionJob {
+  id            String               @id @default(cuid())
+  status        TranscriptionStatus  @default(QUEUED)
+  audioFilePath String
+  audioFileName String
+  language      String               @default("ru")
+  meetingType   String? // Совещание / Интервью / Звонок / Диктовка
+  participantEmails String[]
+
+  transcriptText String?
+  speakerSegments Json? // [{speaker, start, end, text}]
+  summary         String?
+  keyPoints       String[]
+  protocolDocPath String?
+
+  progressPercent Int    @default(0)
+  errorMessage    String?
+
+  project    Project? @relation(fields: [projectId], references: [id])
+  projectId  String?
+  createdBy  User?    @relation("JobCreatedBy", fields: [createdById], references: [id])
+  createdById String?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model KsgStage {
+  id           String   @id @default(cuid())
+  project      Project  @relation(fields: [projectId], references: [id])
+  projectId    String
+  stageType    String // РНВ/РНС, финансирование, стройка, продажи
+  name         String
+  planDate     DateTime
+  factDate     DateTime?
+  deviationDays Int      @default(0)
+  status       String // "по плану" | "внимание" | "критично" | "контроль"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model FinanceScenario {
+  id            String   @id @default(cuid())
+  project       Project  @relation(fields: [projectId], references: [id])
+  projectId     String
+  name          String
+  usageType     String   @default("Жильё") // Жильё / Коммерция / Пансионат (МИРРА)
+  landAreaSqm   Float?
+  saleAreaSqm   Float?
+  pricePerSqm   Float?
+  costPerSqm    Float?
+  durationMonths Int?
+  floors        Int? // этажность
+  bedsCount     Int? // койко-места — для сценариев МИРРА
+  unitsMix      String? // состав помещений на продажу, свободный текст
+
+  revenue       Float?
+  costs         Float?
+  margin        Float?
+  irr           Float?
+  npv           Float?
+  paybackMonths Int?
+
+  comment       String? // ручной комментарий к сценарию
+  aiRiskSummary String? // сгенерированная Claude оценка рисков и устойчивости
+  createdAt     DateTime @default(now())
+}
+
+model LandObject {
+  id          String   @id @default(cuid())
+  project     Project? @relation(fields: [projectId], references: [id])
+  projectId   String?
+  profile      String   @default("Девелопмент") // Девелопмент | МИРРА (пансионаты) — 2 профиля поиска из анкеты
+  title       String
+  region      String
+  areaHectares Float?
+  budgetMillion Float?
+  status       String // "первичный скрининг" | "углубленная проверка" | "приоритет" | "риск"
+  source       String? // госторги / ДомРФ / Авито / Циан / ручной ввод
+  sourceUrl    String?
+  riskNotes    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SupportProgram {
+  id           String   @id @default(cuid())
+  title        String
+  type         String // Кредитование / Субсидия / Налоговая льгота / Лизинг
+  region       String
+  businessLine String // Девелопмент / Пансионаты / Розница
+  potential    String
+  status       String // актуально / на проверке / требует решения
+  sourceUrl    String?
+  sourceNote   String? // откуда взято: НПА, банк, кем внесено вручную
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  meta      Json?
+  createdAt DateTime @default(now())
+}
+
+// Разборщик почты: письма вставляются вручную (нет IMAP-доступа к ящику ГК),
+// Claude извлекает приоритет/категорию/поручения — см. src/routes/mail.ts.
+model MailMessage {
+  id         String   @id @default(cuid())
+  subject    String?
+  fromAddress String?
+  rawExcerpt  String // первые ~1000 символов исходного текста, для контекста в истории
+  summary    String
+  priority   String // высокий | средний | низкий
+  category   String
+  createdAt  DateTime @default(now())
+}
+
+// Мост до появления REST-выгрузки из 1С ERP Философт (см. IMPLEMENTATION_PLAN.md):
+// факт по проекту вносится вручную/из Excel, план берётся из последнего FinanceScenario.
+model FinancialActual {
+  id            String   @id @default(cuid())
+  project       Project  @relation(fields: [projectId], references: [id])
+  projectId     String
+  periodLabel   String // "Август 2025"
+  actualRevenue Float
+  actualMargin  Float?
+  comment       String?
+  createdAt     DateTime @default(now())
+
+  @@index([projectId, periodLabel])
+}

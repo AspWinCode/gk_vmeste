@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Финансовый аналитик — Вместе AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 17V7h3.2l3.8 5.1L15.8 7H19v10h-2.5v-5.9L12 16.9 7.5 11.2V17H5Z" fill="white"/></svg></div>
+        <div><div class="brand-title">ВМЕСТЕ AI</div><div class="brand-sub">единое пространство ассистентов</div></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Основное</div>
+        <a class="nav-item" href="index.html"><div class="nav-left"><div class="dot"></div><span class="text">Рабочий стол</span></div><span class="count">12</span></a>
+        <a class="nav-item" href="assistants.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Каталог ассистентов</span></div><span class="count">9</span></a>
+        <a class="nav-item active" href="finance.html"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Финансовый аналитик</span></div></a>
+        <a class="nav-item" href="transcriber.html"><div class="nav-left"><div class="dot" style="background:#F2CA00"></div><span class="text">Транскрибатор-референт</span></div></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Контроль и мониторинг</div>
+        <a class="nav-item" href="ksg.html"><div class="nav-left"><div class="dot" style="background:#A13F3F"></div><span class="text">Контроль КСГ</span></div></a>
+        <a class="nav-item" href="land.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Земля и объекты</span></div></a>
+        <a class="nav-item" href="support.html"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Меры поддержки</span></div></a>
+        <a class="nav-item" href="finance-monitor.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Финмониторинг</span></div></a>
+        <a class="nav-item" href="mail.html"><div class="nav-left"><div class="dot" style="background:#002D72"></div><span class="text">Разборщик почты</span></div></a>
+      </div>
+      <div class="mini-card">
+        <h3>Быстрый запуск</h3>
+        <p>Создайте новый сценарий расчета по площадке или проекту.</p>
+        <div class="inline-actions" style="margin-top:14px"><button class="btn btn-primary">Новый расчет</button></div>
+      </div>
+    </aside>
+
+    <div class="content">
+      <header class="topbar">
+        <div class="search"><span>⌘K</span><input type="text" value="Поиск по проектам, моделям, ТЭПам и сценариям" aria-label="Поиск по модулю" /></div>
+        <div class="top-actions">
+          <button class="icon-btn" data-theme-toggle aria-label="Переключить тему">◐</button>
+          <button class="icon-btn" aria-label="Уведомления">🔔</button>
+          <div class="avatar">ГК Вместе</div>
+        </div>
+      </header>
+
+      <main class="main">
+        <section class="panel hero">
+          <div>
+            <div class="eyebrow">Экран ассистента</div>
+            <h1>Финансовый аналитик</h1>
+            <p class="lead">Рабочий модуль для расчета ТЭПов, построения финансовой модели и сравнения сценариев освоения площадки по выручке, затратам, срокам и ключевым показателям проекта.</p>
+          </div>
+          <div class="summary">
+            <div class="summary-item"><strong id="statTotal">—</strong><span>сценариев рассчитано всего</span></div>
+            <div class="summary-item"><strong id="statAvgIrr">—</strong><span>средний IRR по сценариям</span></div>
+            <div class="summary-item"><strong id="statProjects">—</strong><span>проектов в работе</span></div>
+          </div>
+        </section>
+        <div id="apiWarning" class="footer-note" style="display:none;color:#9E3D3D">Не удаётся подключиться к backend по адресу <code id="apiWarningUrl"></code>. Проверьте, что API запущен (см. backend/README.md).</div>
+
+        <section class="workspace">
+          <aside class="panel left-panel">
+            <div class="section-title"><div><h2>Параметры расчета</h2><p>Исходные данные проекта и рамки модели</p></div></div>
+            <form id="scenarioForm" class="stack">
+              <div class="field">
+                <label>Проект</label>
+                <select class="select" id="projectSelect"></select>
+                <div class="inline-actions" style="margin-top:8px"><button type="button" class="btn btn-secondary" id="newProjectBtn">+ Новый проект</button></div>
+              </div>
+              <div class="field"><label>Название сценария</label><input class="input" id="scenarioName" value="Базовый сценарий" required /></div>
+              <div class="field">
+                <label>Тип освоения</label>
+                <div class="tabs" id="usageTabs">
+                  <button type="button" class="tab active" data-usage="Жильё">Жильё</button>
+                  <button type="button" class="tab" data-usage="Смешанный">Смешанный</button>
+                  <button type="button" class="tab" data-usage="Коммерция">Коммерция</button>
+                  <button type="button" class="tab" data-usage="Пансионат">Пансионат (МИРРА)</button>
+                </div>
+              </div>
+              <div class="field"><label>Площадь участка, м²</label><input class="input" type="number" step="any" id="landAreaSqm" /></div>
+              <div class="field"><label>Площадь реализации, м²</label><input class="input" type="number" step="any" id="saleAreaSqm" value="41200" required /></div>
+              <div class="field"><label>Средняя цена реализации, ₽/м²</label><input class="input" type="number" step="any" id="pricePerSqm" value="184000" required /></div>
+              <div class="field"><label>Себестоимость, ₽/м²</label><input class="input" type="number" step="any" id="costPerSqm" value="111500" required /></div>
+              <div class="field"><label>Срок проекта, мес.</label><input class="input" type="number" id="durationMonths" value="30" required /></div>
+              <div class="field" id="bedsField" style="display:none"><label>Количество койко-мест</label><input class="input" type="number" id="bedsCount" /></div>
+              <div class="field"><label>Комментарий к сценарию</label><textarea class="textarea" id="scenarioComment"></textarea></div>
+              <label style="display:flex;align-items:center;gap:8px;font-size:var(--text-sm);color:var(--color-text-muted)">
+                <input type="checkbox" id="withAiReview" /> сразу запросить оценку рисков у Claude
+              </label>
+              <button class="btn btn-primary" type="submit" id="calcBtn" style="justify-content:center">Пересчитать модель</button>
+              <div id="formError" class="footer-note" style="color:#9E3D3D;display:none"></div>
+            </form>
+          </aside>
+
+          <section class="panel center-panel">
+            <div class="section-title"><div><h2>Результат модели</h2><p id="scenarioSubtitle">Заполните форму слева и нажмите «Пересчитать модель»</p></div><span class="status-chip status-wait" id="scenarioStatusChip">нет данных</span></div>
+
+            <div id="scenarioEmpty" class="empty">Здесь появятся ТЭПы, IRR/NPV и сравнение сценариев после первого расчёта.</div>
+
+            <div id="scenarioDetail" style="display:none">
+              <div class="metric-grid">
+                <div class="metric-card"><strong id="metricRevenue">—</strong><span>Плановая выручка</span></div>
+                <div class="metric-card"><strong id="metricCosts">—</strong><span>Бюджет затрат</span></div>
+                <div class="metric-card"><strong id="metricMargin">—</strong><span>Маржинальность</span></div>
+                <div class="metric-card"><strong id="metricPayback">—</strong><span>Окупаемость, мес.</span></div>
+              </div>
+
+              <div class="toolbar-line" style="margin-top:14px">
+                <div class="inline-actions" id="scenarioPills"></div>
+                <div class="inline-actions"><button class="btn btn-secondary" id="aiReviewBtn">Оценить риски (Claude)</button></div>
+              </div>
+
+              <div class="stack">
+                <div class="model-card">
+                  <strong>Итог по текущему сценарию</strong>
+                  <span id="aiRiskText">Комментарий ещё не запрошен — нажмите «Оценить риски (Claude)».</span>
+                </div>
+
+                <div class="table-wrap">
+                  <table class="table">
+                    <thead><tr><th>Сценарий</th><th>Выручка</th><th>Затраты</th><th>Маржа</th><th>IRR</th><th>NPV</th></tr></thead>
+                    <tbody id="comparisonTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <aside class="panel right-panel">
+            <div class="section-title"><div><h2>ТЭПы и история</h2><p>Полный набор показателей и версии сценариев</p></div></div>
+            <div class="kpi-list" id="tepList"></div>
+
+            <div class="stack" style="margin-top:14px">
+              <div>
+                <div class="section-title"><div><h2 style="font-size:var(--text-base)">История сценариев по проекту</h2></div></div>
+                <div class="history-list" id="scenarioHistoryList"><div class="footer-note">Выберите проект слева.</div></div>
+              </div>
+
+              <div class="footer-note">Связанные модули: <a href="ksg.html">Контроль КСГ</a>, <a href="land.html">Земля и объекты</a>, <a href="finance-monitor.html">Финмониторинг</a>.</div>
+            </div>
+          </aside>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script>Auth.requireAuth();</script>
+  <script src="app.js"></script>
+  <script src="finance.js"></script>
+</body>
+</html>
