@@ -3,6 +3,9 @@
 
 FROM node:20-alpine AS deps
 WORKDIR /app
+# Без openssl Prisma не может определить версию libssl при `prisma generate`
+# и молча собирает движок под несуществующий openssl-1.1.x (Alpine 3.19+ = OpenSSL 3).
+RUN apk add --no-cache openssl
 COPY package.json package-lock.json* ./
 RUN npm install
 
@@ -15,6 +18,7 @@ RUN npm run build
 FROM node:20-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+RUN apk add --no-cache openssl
 COPY package.json package-lock.json* ./
 RUN npm install --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
