@@ -68,17 +68,17 @@
         <div id="apiWarning" class="footer-note" style="display:none;color:#9E3D3D">Не удаётся подключиться к backend по адресу <code id="apiWarningUrl"></code>. Проверьте, что API запущен (см. backend/README.md).</div>
 
         <section class="panel toolbar">
-          <div class="filters">
-            <button class="filter active">Все направления</button>
-            <button class="filter">Недвижимость</button>
-            <button class="filter">Финансы</button>
-            <button class="filter">Планирование</button>
-            <button class="filter">Коммуникации</button>
+          <div class="filters" id="directionFilters">
+            <button class="filter active" data-direction="">Все направления</button>
+            <button class="filter" data-direction="Недвижимость">Недвижимость</button>
+            <button class="filter" data-direction="Финансы">Финансы</button>
+            <button class="filter" data-direction="Планирование">Планирование</button>
+            <button class="filter" data-direction="Коммуникации">Коммуникации</button>
           </div>
-          <div class="filters">
-            <button class="filter">Сегодня</button>
-            <button class="filter">Неделя</button>
-            <button class="filter">Только критичное</button>
+          <div class="filters" id="periodFilters">
+            <button class="filter" data-period="today">Сегодня</button>
+            <button class="filter" data-period="week">Неделя</button>
+            <button class="filter" data-period="critical">Только критичное</button>
           </div>
         </section>
 
