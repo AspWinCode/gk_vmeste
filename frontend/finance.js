@@ -1,5 +1,12 @@
 (function () {
-  var state = { projects: [], scenarios: [], selectedProjectId: null, selectedScenarioId: null, usageType: "Жильё" };
+  var state = { projects: [], scenarios: [], selectedProjectId: null, selectedScenarioId: null, usageType: "Жильё", query: "" };
+
+  function filteredScenarios() {
+    if (!state.query) return state.scenarios;
+    return state.scenarios.filter(function (s) {
+      return (s.name + " " + s.usageType).toLowerCase().indexOf(state.query) !== -1;
+    });
+  }
 
   var money = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
 
@@ -98,7 +105,12 @@
       el.innerHTML = '<div class="footer-note">Для этого проекта сценариев ещё нет.</div>';
       return;
     }
-    el.innerHTML = state.scenarios
+    var visible = filteredScenarios();
+    if (visible.length === 0) {
+      el.innerHTML = '<div class="footer-note">Ничего не найдено по запросу.</div>';
+      return;
+    }
+    el.innerHTML = visible
       .map(function (s) {
         var active = s.id === state.selectedScenarioId;
         return (
@@ -117,7 +129,7 @@
   }
 
   function renderComparisonTable() {
-    document.getElementById("comparisonTableBody").innerHTML = state.scenarios
+    document.getElementById("comparisonTableBody").innerHTML = filteredScenarios()
       .map(function (s) {
         return (
           "<tr><td><strong>" + esc(s.name) + "</strong></td><td>" + fmtMoney(s.revenue) + "</td><td>" +
@@ -232,6 +244,12 @@
       btn.disabled = false;
       btn.textContent = "Пересчитать модель";
     }
+  });
+
+  document.getElementById("globalSearchInput").addEventListener("input", function (e) {
+    state.query = e.target.value.trim().toLowerCase();
+    renderHistory();
+    renderComparisonTable();
   });
 
   document.getElementById("quickNewCalcBtn").addEventListener("click", function () {

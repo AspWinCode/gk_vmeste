@@ -1,5 +1,12 @@
 (function () {
-  var state = { objects: [], profile: "Девелопмент", listFilter: "" };
+  var state = { objects: [], profile: "Девелопмент", listFilter: "", query: "" };
+
+  function filteredObjects() {
+    if (!state.query) return state.objects;
+    return state.objects.filter(function (o) {
+      return (o.title + " " + o.region).toLowerCase().indexOf(state.query) !== -1;
+    });
+  }
 
   function esc(str) {
     var div = document.createElement("div");
@@ -157,7 +164,12 @@
       el.innerHTML = '<div class="footer-note">Объектов пока нет — проанализируйте источник или добавьте вручную слева.</div>';
       return;
     }
-    el.innerHTML = state.objects
+    var visible = filteredObjects();
+    if (visible.length === 0) {
+      el.innerHTML = '<div class="footer-note">Ничего не найдено по запросу.</div>';
+      return;
+    }
+    el.innerHTML = visible
       .map(function (o) {
         var details = [];
         if (o.areaHectares) details.push(o.areaHectares + " га");
@@ -189,6 +201,11 @@
   document.getElementById("quickAnalyzeBtn").addEventListener("click", function () {
     document.getElementById("sourceText").scrollIntoView({ behavior: "smooth", block: "start" });
     document.getElementById("sourceText").focus();
+  });
+
+  document.getElementById("globalSearchInput").addEventListener("input", function (e) {
+    state.query = e.target.value.trim().toLowerCase();
+    render();
   });
 
   loadObjects();

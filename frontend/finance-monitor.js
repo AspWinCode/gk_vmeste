@@ -40,12 +40,15 @@
       .join("") || '<option value="">Сначала создайте проект</option>';
   }
 
+  var state = { lastData: null, query: "" };
+
   async function loadSummary() {
     try {
       var res = await Auth.apiFetch("/finance-monitor/summary");
       if (!res.ok) throw new Error("bad status");
       var data = await res.json();
       showApiWarning(false);
+      state.lastData = data;
       render(data);
     } catch (e) {
       showApiWarning(true);
@@ -57,11 +60,17 @@
     document.getElementById("statMargin").textContent = fmtPercent(data.totals.avgMargin);
     document.getElementById("statDeviating").textContent = data.totals.deviatingProjects;
 
+    var rows = state.query
+      ? data.rows.filter(function (r) { return r.projectName.toLowerCase().indexOf(state.query) !== -1; })
+      : data.rows;
+
     var body = document.getElementById("monitorTableBody");
     if (data.rows.length === 0) {
       body.innerHTML = '<tr><td colspan="5" class="footer-note">Проектов пока нет.</td></tr>';
+    } else if (rows.length === 0) {
+      body.innerHTML = '<tr><td colspan="5" class="footer-note">Ничего не найдено по запросу.</td></tr>';
     } else {
-      body.innerHTML = data.rows
+      body.innerHTML = rows
         .map(function (r) {
           return (
             "<tr><td><strong>" + esc(r.projectName) + "</strong></td><td>" + fmtMoney(r.planRevenue) + "</td><td>" +
@@ -74,8 +83,8 @@
     }
 
     var signalsEl = document.getElementById("signalsList");
-    var signals = data.rows.filter(function (r) { return r.status === "риск" || r.status === "внимание"; });
-    var growing = data.rows.filter(function (r) { return r.status === "выше плана"; });
+    var signals = rows.filter(function (r) { return r.status === "риск" || r.status === "внимание"; });
+    var growing = rows.filter(function (r) { return r.status === "выше плана"; });
     var items = signals
       .map(function (r) {
         return {
@@ -105,6 +114,11 @@
 
   document.getElementById("refreshBtn").addEventListener("click", loadSummary);
   document.getElementById("quickRefreshBtn").addEventListener("click", loadSummary);
+
+  document.getElementById("globalSearchInput").addEventListener("input", function (e) {
+    state.query = e.target.value.trim().toLowerCase();
+    if (state.lastData) render(state.lastData);
+  });
 
   document.getElementById("actualForm").addEventListener("submit", async function (e) {
     e.preventDefault();

@@ -1,5 +1,12 @@
 (function () {
-  var state = { messages: [] };
+  var state = { messages: [], query: "" };
+
+  function filteredMessages() {
+    if (!state.query) return state.messages;
+    return state.messages.filter(function (m) {
+      return ((m.subject || "") + " " + m.category + " " + m.summary).toLowerCase().indexOf(state.query) !== -1;
+    });
+  }
   var PRIORITY_CLASS = { "высокий": "status-risk", "средний": "status-wait", "низкий": "status-ok" };
 
   function esc(str) {
@@ -38,7 +45,12 @@
       el.innerHTML = '<div class="footer-note">Писем пока нет.</div>';
       return;
     }
-    el.innerHTML = state.messages
+    var visible = filteredMessages();
+    if (visible.length === 0) {
+      el.innerHTML = '<div class="footer-note">Ничего не найдено по запросу.</div>';
+      return;
+    }
+    el.innerHTML = visible
       .map(function (m) {
         return (
           '<div class="history-item"><div><strong>' + esc(m.subject || "(без темы)") + "</strong><span>" +
@@ -105,6 +117,11 @@
   document.getElementById("quickAnalyzeBtn").addEventListener("click", function () {
     document.getElementById("mailForm").scrollIntoView({ behavior: "smooth", block: "start" });
     document.getElementById("mailText").focus();
+  });
+
+  document.getElementById("globalSearchInput").addEventListener("input", function (e) {
+    state.query = e.target.value.trim().toLowerCase();
+    renderHistory();
   });
 
   loadHistory();

@@ -41,7 +41,7 @@
 
   var state = {
     signals: [], feed: [], tasks: [], projects: [], latestScenarioByProject: {}, ksgStages: [],
-    direction: "", period: "",
+    direction: "", period: "", query: "",
   };
 
   async function loadDashboard() {
@@ -92,7 +92,6 @@
     state.feed = buildFeed(scenarios, transcriptionJobs, ksgStages);
     state.tasks = openTasks.map(function (t) { return Object.assign({}, t, { direction: taskDirection(t) }); });
 
-    renderProjects();
     renderFocus(scenarios, criticalKsg, tasks);
     applyFilters();
   }
@@ -154,8 +153,14 @@
     return events;
   }
 
+  function matchesQuery(text) {
+    if (!state.query) return true;
+    return text.toLowerCase().indexOf(state.query) !== -1;
+  }
+
   function matchesFilters(item) {
     if (state.direction && item.direction !== state.direction) return false;
+    if (!matchesQuery(item.title + " " + item.text)) return false;
     if (state.period === "critical") return !!item.critical;
     if (state.period === "today" || state.period === "week") {
       if (!item.at) return false;
@@ -168,6 +173,7 @@
 
   function matchesTaskFilters(task) {
     if (state.direction && task.direction !== state.direction) return false;
+    if (!matchesQuery(task.title + " " + (task.project ? task.project.name : ""))) return false;
     if (state.period === "critical") return false; // у поручений нет уровня риска — раздел просто пустеет для этого фильтра
     if (state.period === "today" || state.period === "week") {
       if (!task.dueDate) return false;
@@ -182,6 +188,7 @@
     renderSignals(state.signals.filter(matchesFilters));
     renderFeed(state.feed.filter(matchesFilters));
     renderTasks(state.tasks.filter(matchesTaskFilters));
+    renderProjects();
   }
 
   function renderSignals(items) {
@@ -198,9 +205,13 @@
 
   function renderProjects() {
     var el = document.getElementById("projectList");
-    var projects = state.projects;
-    if (projects.length === 0) {
+    var projects = state.projects.filter(function (p) { return matchesQuery(p.name); });
+    if (state.projects.length === 0) {
       el.innerHTML = '<div class="footer-note">Проектов пока нет — создайте первый на экране «Финансовый аналитик».</div>';
+      return;
+    }
+    if (projects.length === 0) {
+      el.innerHTML = '<div class="footer-note">Ничего не найдено по запросу.</div>';
       return;
     }
     el.innerHTML = projects.slice(0, 4).map(function (p) {
@@ -334,6 +345,11 @@
       btn.disabled = false;
       btn.textContent = "Сформировать отчет";
     }
+  });
+
+  document.getElementById("globalSearchInput").addEventListener("input", function (e) {
+    state.query = e.target.value.trim().toLowerCase();
+    applyFilters();
   });
 
   document.getElementById("quickRefreshBtn").addEventListener("click", loadDashboard);

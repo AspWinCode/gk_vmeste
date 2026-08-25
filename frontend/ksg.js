@@ -1,5 +1,12 @@
 (function () {
-  var state = { projects: [], stages: [], projectFilter: "" };
+  var state = { projects: [], stages: [], projectFilter: "", query: "" };
+
+  function filteredStages() {
+    if (!state.query) return state.stages;
+    return state.stages.filter(function (s) {
+      return (s.name + " " + s.stageType + " " + (s.project ? s.project.name : "")).toLowerCase().indexOf(state.query) !== -1;
+    });
+  }
 
   var STATUS_CLASS = {
     "по плану": "status-ok",
@@ -63,7 +70,12 @@
       body.innerHTML = '<tr><td colspan="6" class="footer-note">Этапов пока нет — добавьте вручную или импортируйте из Excel.</td></tr>';
       return;
     }
-    body.innerHTML = state.stages
+    var visible = filteredStages();
+    if (visible.length === 0) {
+      body.innerHTML = '<tr><td colspan="6" class="footer-note">Ничего не найдено по запросу.</td></tr>';
+      return;
+    }
+    body.innerHTML = visible
       .map(function (s) {
         return (
           "<tr><td><strong>" + esc(s.name) + "</strong> <span style=\"color:var(--color-text-faint)\">· " + esc(s.stageType) + "</span></td>" +
@@ -137,6 +149,11 @@
   document.getElementById("ksgProjectFilter").addEventListener("change", function (e) {
     state.projectFilter = e.target.value;
     loadStages();
+  });
+
+  document.getElementById("globalSearchInput").addEventListener("input", function (e) {
+    state.query = e.target.value.trim().toLowerCase();
+    renderTable();
   });
 
   function refreshAll() {

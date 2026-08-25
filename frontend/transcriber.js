@@ -1,5 +1,12 @@
 (function () {
-  var state = { jobs: [], selectedId: null, pollHandle: null };
+  var state = { jobs: [], selectedId: null, pollHandle: null, query: "" };
+
+  function filteredJobs() {
+    if (!state.query) return state.jobs;
+    return state.jobs.filter(function (j) {
+      return (j.audioFileName + " " + (j.meetingType || "")).toLowerCase().indexOf(state.query) !== -1;
+    });
+  }
 
   var STATUS_LABEL = {
     QUEUED: "в очереди",
@@ -108,9 +115,15 @@
       historyEl.innerHTML = '<div class="footer-note">Пока нет истории.</div>';
       return;
     }
+    var visible = filteredJobs();
+    if (visible.length === 0) {
+      queueEl.innerHTML = '<div class="footer-note">Ничего не найдено по запросу.</div>';
+      historyEl.innerHTML = '<div class="footer-note">Ничего не найдено по запросу.</div>';
+      return;
+    }
 
-    queueEl.innerHTML = state.jobs.map(queueItemHtml).join("");
-    historyEl.innerHTML = state.jobs.map(historyItemHtml).join("");
+    queueEl.innerHTML = visible.map(queueItemHtml).join("");
+    historyEl.innerHTML = visible.map(historyItemHtml).join("");
 
     Array.prototype.forEach.call(document.querySelectorAll("[data-job-id]"), function (el) {
       el.addEventListener("click", function () {
@@ -245,6 +258,11 @@
       btn.disabled = false;
       btn.textContent = "Загрузить и обработать";
     }
+  });
+
+  document.getElementById("globalSearchInput").addEventListener("input", function (e) {
+    state.query = e.target.value.trim().toLowerCase();
+    renderQueueAndHistory();
   });
 
   document.getElementById("quickUploadBtn").addEventListener("click", function () {

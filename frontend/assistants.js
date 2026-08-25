@@ -23,7 +23,7 @@
   var STATUS_LABEL = { ACTIVE: "активен", SETUP: "настройка", NEW: "новый" };
   var STATUS_CLASS = { ACTIVE: "status-ok", SETUP: "status-wait", NEW: "status-new" };
 
-  var state = { assistants: [], tagFilter: "", statusFilter: "" };
+  var state = { assistants: [], tagFilter: "", statusFilter: "", query: "" };
 
   function esc(str) {
     var div = document.createElement("div");
@@ -82,6 +82,10 @@
     var filtered = state.assistants.filter(function (a) {
       if (state.tagFilter && a.tags.indexOf(state.tagFilter) === -1) return false;
       if (state.statusFilter && a.status !== state.statusFilter) return false;
+      if (state.query) {
+        var haystack = (a.name + " " + a.description + " " + a.tags.join(" ")).toLowerCase();
+        if (haystack.indexOf(state.query) === -1) return false;
+      }
       return true;
     });
 
@@ -124,6 +128,11 @@
           .join("")
       : '<div class="footer-note">Все ассистенты в каталоге активны.</div>';
   }
+
+  document.getElementById("globalSearchInput").addEventListener("input", function (e) {
+    state.query = e.target.value.trim().toLowerCase();
+    renderGrid();
+  });
 
   document.getElementById("toggleAddAssistantBtn").addEventListener("click", function () {
     var panel = document.getElementById("addAssistantPanel");

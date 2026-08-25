@@ -171,8 +171,24 @@
     apiFetch: apiFetch,
   };
 
+  // Общий ⌘K/Ctrl+K — просто ставит фокус в поле поиска на текущей странице.
+  // Саму фильтрацию по вводу каждая страница делает своим скриптом (данные разные).
+  function mountSearchShortcut() {
+    document.addEventListener("keydown", function (e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        var input = document.getElementById("globalSearchInput");
+        if (input) {
+          e.preventDefault();
+          input.focus();
+          input.select();
+        }
+      }
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     renderUserBadge();
     mountNotifications();
+    mountSearchShortcut();
   });
 })();

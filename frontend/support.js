@@ -1,5 +1,12 @@
 (function () {
-  var state = { programs: [], regionFilter: "" };
+  var state = { programs: [], regionFilter: "", query: "" };
+
+  function filteredPrograms() {
+    if (!state.query) return state.programs;
+    return state.programs.filter(function (p) {
+      return (p.title + " " + p.type + " " + p.region).toLowerCase().indexOf(state.query) !== -1;
+    });
+  }
   var STATUS_CLASS = { "актуально": "status-ok", "требует решения": "status-risk", "на проверке": "status-wait" };
   var STATUS_CYCLE = ["на проверке", "актуально", "требует решения"];
 
@@ -103,7 +110,12 @@
       body.innerHTML = '<tr><td colspan="5" class="footer-note">Программ пока нет — проанализируйте источник или добавьте вручную слева.</td></tr>';
       return;
     }
-    body.innerHTML = state.programs
+    var visible = filteredPrograms();
+    if (visible.length === 0) {
+      body.innerHTML = '<tr><td colspan="5" class="footer-note">Ничего не найдено по запросу.</td></tr>';
+      return;
+    }
+    body.innerHTML = visible
       .map(function (p) {
         return (
           "<tr><td><strong>" + esc(p.title) + '</strong><div style="font-size:var(--text-xs);color:var(--color-text-muted);margin-top:2px">' + esc(p.potential) + "</div></td>" +
@@ -127,6 +139,11 @@
   }
 
   document.getElementById("quickRefreshBtn").addEventListener("click", loadPrograms);
+
+  document.getElementById("globalSearchInput").addEventListener("input", function (e) {
+    state.query = e.target.value.trim().toLowerCase();
+    render();
+  });
 
   loadPrograms();
 })();
