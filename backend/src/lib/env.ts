@@ -16,6 +16,9 @@ export const env = {
   redisUrl: process.env.REDIS_URL ?? "redis://localhost:6379",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
   anthropicModel: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5",
+  // Кастомный эндпоинт для Anthropic-совместимого прокси (например, "AI Tunnel"),
+  // если официальный api.anthropic.com недоступен напрямую. Пусто = дефолт SDK.
+  anthropicBaseUrl: process.env.ANTHROPIC_BASE_URL || undefined,
   uploadDir: process.env.UPLOAD_DIR ?? "./uploads",
   maxUploadMb: Number(process.env.MAX_UPLOAD_MB ?? 200),
   sttProvider: process.env.STT_PROVIDER ?? "stub",

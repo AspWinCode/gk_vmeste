@@ -1,7 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "../lib/env";
 
-const client = new Anthropic({ apiKey: env.anthropicApiKey });
+const client = new Anthropic({ apiKey: env.anthropicApiKey, baseURL: env.anthropicBaseUrl });
 
 const COMPANY_CONTEXT = `Мы группа компаний, объединяющих три направления деятельности:
 ГК ВМЕСТЕ — девелопмент в Иркутской области;

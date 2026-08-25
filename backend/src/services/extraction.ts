@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { XMLParser } from "fast-xml-parser";
 import { env } from "../lib/env";
 
-const client = new Anthropic({ apiKey: env.anthropicApiKey });
+const client = new Anthropic({ apiKey: env.anthropicApiKey, baseURL: env.anthropicBaseUrl });
 
 /**
  * Осознанное ограничение: сервис НЕ обходит госторги/ДомРФ/Авито/Циан автоматически —
