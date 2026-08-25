@@ -2,12 +2,17 @@
 
 Репозиторий: [github.com/AspWinCode/gk_vmeste](https://github.com/AspWinCode/gk_vmeste)
 
+## Этот сервер — общий (важно!)
+
+На VPS уже работают чужие проекты (lesovik, moodle, skulpt, dog-assistant, ollama и др.), и порты 80/443 заняты **системным nginx**, который маршрутизирует их по доменам. Наш docker-compose **не трогает** ни системный nginx, ни его конфиги — фронтенд поднимается на отдельном порту (по умолчанию **8092**, см. `HTTP_PORT` в `.env`). Postgres/Redis из этого проекта не публикуются на хост вообще (доступны только внутри docker-сети), так что с чужими `postgres`/`redis`-контейнерами конфликтов нет.
+
+Если позже понадобится нормальный домен — добавим **новый** файл в `/etc/nginx/sites-enabled/`, не трогая существующие (`lesovik`, `moodle`, `skulpt.win-code.online`, `squlpt.wincode-academy.ru`).
+
 ## Требования к серверу
 
-- Ubuntu 22.04+ (или любой дистрибутив с Docker)
-- Docker + Docker Compose plugin: `curl -fsSL https://get.docker.com | sh`
-- Открытый порт 80 (443, если добавите TLS — см. ниже)
-- Минимум 2 ГБ RAM
+- Docker + Docker Compose plugin (проверить: `docker compose version`; если нет — `curl -fsSL https://get.docker.com | sh`)
+- Свободный порт (8092 по умолчанию, проверено — свободен на этом сервере)
+- Диск/память на сервере: 62 ГБ свободно, 5.9 ГБ свободной RAM — более чем достаточно
 
 ## Первый деплой
 
@@ -28,7 +33,7 @@ docker compose -f docker-compose.prod.yml exec api npx prisma migrate deploy
 docker compose -f docker-compose.prod.yml exec api npx tsx prisma/seed.ts
 ```
 
-Открыть `http://<IP-сервера>/login.html`, зарегистрировать первого пользователя.
+Открыть `http://<IP-сервера>:8092/login.html`, зарегистрировать первого пользователя.
 
 ## Обновление после изменений в репозитории
 
@@ -44,14 +49,14 @@ docker compose -f docker-compose.prod.yml exec api npx prisma migrate deploy
 
 ```bash
 docker compose -f docker-compose.prod.yml ps
-curl http://localhost/api/health   # {"status":"ok"}
+curl http://localhost:8092/api/health   # {"status":"ok"}
 docker compose -f docker-compose.prod.yml logs -f api
 docker compose -f docker-compose.prod.yml logs -f worker
 ```
 
-## TLS (домен + HTTPS)
+## TLS / нормальный домен (по желанию, позже)
 
-Проще всего — Caddy или certbot перед nginx-контейнером, либо заменить `nginx/default.conf` + добавить том с сертификатами. В этом репозитории TLS не настроен — по умолчанию сервис отвечает по HTTP на порту 80. Если есть домен, скажите — донастрою.
+Сейчас сервис отвечает по обычному HTTP на порту 8092 — этого достаточно для проверки функциональности. Если решите повесить домен/поддомен, самый чистый вариант на этом сервере — **новый** vhost-файл в `/etc/nginx/sites-enabled/` (по образцу уже существующих под другие проекты), который проксирует на `127.0.0.1:8092`, плюс `certbot` для сертификата. Существующие конфиги других проектов при этом не трогаем.
 
 ## На что обратить внимание после деплоя
 

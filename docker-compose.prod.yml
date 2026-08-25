@@ -56,7 +56,10 @@ services:
       dockerfile: frontend/Dockerfile
     restart: unless-stopped
     ports:
-      - "80:80"
+      # Хост-порт 80/443 занят системным nginx с другими проектами на этом VPS —
+      # используем отдельный порт, ничего чужого не трогаем. Переопределяется
+      # переменной HTTP_PORT в .env, если понадобится другой.
+      - "${HTTP_PORT:-8092}:80"
     depends_on:
       - api
 
