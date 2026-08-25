@@ -4,6 +4,7 @@ import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import { computeScenarioMetrics } from "../services/financeCalc";
 import { generateFinanceRiskSummary } from "../services/claude";
+import { notify } from "../services/notify";
 
 export const financeRouter = Router();
 financeRouter.use(requireAuth);
@@ -103,7 +104,17 @@ financeRouter.post("/scenarios", async (req, res) => {
       paybackMonths: metrics.paybackMonths,
       aiRiskSummary,
     },
+    include: { project: { select: { name: true } } },
   });
+
+  if (metrics.margin < 0.15) {
+    await notify({
+      title: "Финсценарий ниже целевой маржи",
+      body: `«${scenario.name}» (${scenario.project?.name ?? "проект"}) — маржа ${(metrics.margin * 100).toFixed(1)}%.`,
+      type: "finance",
+      link: "finance.html",
+    });
+  }
 
   res.status(201).json(scenario);
 });

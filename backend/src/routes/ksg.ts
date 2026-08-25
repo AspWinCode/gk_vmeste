@@ -3,6 +3,7 @@ import multer from "multer";
 import ExcelJS from "exceljs";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
+import { notify } from "../services/notify";
 import { requireAuth } from "../middleware/auth";
 
 export const ksgRouter = Router();
@@ -95,15 +96,27 @@ ksgRouter.patch("/stages/:id", async (req, res) => {
   const fact = parsed.data.factDate === undefined ? existing.factDate : parsed.data.factDate ? new Date(parsed.data.factDate) : null;
   const deviationDays = deviationInDays(existing.planDate, fact);
 
+  const nextStatus = computeStatus(deviationDays);
   const stage = await prisma.ksgStage.update({
     where: { id: req.params.id },
     data: {
       name: parsed.data.name ?? undefined,
       factDate: fact,
       deviationDays,
-      status: computeStatus(deviationDays),
+      status: nextStatus,
     },
+    include: { project: { select: { name: true } } },
   });
+
+  if (nextStatus === "критично" && existing.status !== "критично") {
+    await notify({
+      title: "Критичное отставание по КСГ",
+      body: `Этап «${stage.name}» (${stage.project?.name ?? "проект"}) отклонился на ${deviationDays} дн.`,
+      type: "ksg",
+      link: "ksg.html",
+    });
+  }
+
   res.json(stage);
 });
 
@@ -120,6 +133,7 @@ ksgRouter.post("/import", upload.single("file"), async (req, res) => {
   const projectCache = new Map<string, string>();
   const created: string[] = [];
   const errors: string[] = [];
+  let criticalCount = 0;
 
   for (let rowNumber = 2; rowNumber <= sheet.rowCount; rowNumber++) {
     const row = sheet.getRow(rowNumber);
@@ -146,18 +160,21 @@ ksgRouter.post("/import", upload.single("file"), async (req, res) => {
     }
 
     const deviationDays = deviationInDays(planDate, factDate);
+    const status = computeStatus(deviationDays);
     await prisma.ksgStage.create({
-      data: {
-        projectId,
-        stageType: stageType || "стройка",
-        name,
-        planDate,
-        factDate,
-        deviationDays,
-        status: computeStatus(deviationDays),
-      },
+      data: { projectId, stageType: stageType || "стройка", name, planDate, factDate, deviationDays, status },
     });
     created.push(name);
+    if (status === "критично") criticalCount++;
+  }
+
+  if (criticalCount > 0) {
+    await notify({
+      title: "Импорт КСГ: есть критичные отставания",
+      body: `После импорта ${criticalCount} этап(ов) уже критичны на текущую дату — стоит проверить.`,
+      type: "ksg",
+      link: "ksg.html",
+    });
   }
 
   res.json({ importedRows: created.length, errors });

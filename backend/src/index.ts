@@ -12,6 +12,9 @@ import { landRouter } from "./routes/land";
 import { supportRouter } from "./routes/support";
 import { financeMonitorRouter } from "./routes/financeMonitor";
 import { mailRouter } from "./routes/mail";
+import { notificationsRouter } from "./routes/notifications";
+import { reportsRouter } from "./routes/reports";
+import { usersRouter } from "./routes/users";
 
 const app = express();
 
@@ -31,6 +34,9 @@ app.use("/api/land", landRouter);
 app.use("/api/support", supportRouter);
 app.use("/api/finance-monitor", financeMonitorRouter);
 app.use("/api/mail", mailRouter);
+app.use("/api/notifications", notificationsRouter);
+app.use("/api/reports", reportsRouter);
+app.use("/api/users", usersRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

@@ -4,6 +4,7 @@ import { connection, TranscriptionJobData } from "./queue";
 import { prisma } from "../lib/prisma";
 import { getSpeechToTextProvider } from "../services/speechToText";
 import { analyzeMeetingTranscript } from "../services/claude";
+import { notify } from "../services/notify";
 
 // Отдельный процесс: `npm run worker`. Разнесён от HTTP-сервера, чтобы долгая
 // транскрибация/вызовы Claude не блокировали API и масштабировались независимо.
@@ -54,6 +55,13 @@ const worker = new Worker<TranscriptionJobData>(
           })),
         });
       }
+
+      await notify({
+        title: "Транскрибация завершена",
+        body: `«${record.audioFileName}» обработан, извлечено поручений: ${analysis.tasks.length}.`,
+        type: "transcriber",
+        link: "transcriber.html",
+      });
 
       return { status: "done" };
     } catch (err) {

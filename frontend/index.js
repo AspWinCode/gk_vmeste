@@ -294,6 +294,48 @@
     });
   });
 
+  document.getElementById("generateReportBtn").addEventListener("click", async function () {
+    var btn = document.getElementById("generateReportBtn");
+    btn.disabled = true;
+    btn.textContent = "Формируем...";
+    try {
+      var visibleSignals = state.signals.filter(matchesFilters);
+      var visibleTasks = state.tasks.filter(matchesTaskFilters);
+      var payload = {
+        kpis: [
+          { label: "Активных задач по проектам", value: document.getElementById("kpiActiveTasks").textContent },
+          { label: "Отставания по КСГ", value: document.getElementById("kpiKsgDelays").textContent },
+          { label: "Совокупный NPV по последним моделям", value: document.getElementById("kpiTotalNpv").textContent },
+          { label: "Этапов КСГ обновлены за 7 дней", value: document.getElementById("kpiFreshness").textContent },
+        ],
+        signals: visibleSignals.map(function (s) { return { title: s.title, text: s.text, label: s.label }; }),
+        projects: state.projects.slice(0, 10).map(function (p) {
+          var scenario = state.latestScenarioByProject[p.id];
+          var maxDeviation = state.ksgStages.filter(function (s) { return s.projectId === p.id; }).reduce(function (m, s) { return Math.max(m, s.deviationDays); }, 0);
+          var atRisk = maxDeviation > 7 || (scenario && scenario.margin !== null && scenario.margin < 0.15);
+          return { name: p.name, status: atRisk ? "решение" : "контроль", note: (scenario ? "IRR " + fmtPercent(scenario.irr) + ", " : "") + "КСГ +" + maxDeviation + " дн." };
+        }),
+        tasks: visibleTasks.slice(0, 10).map(function (t) { return { title: t.title, due: fmtDue(t.dueDate) }; }),
+      };
+      var res = await Auth.apiFetch("/reports/daily-summary", { method: "POST", body: payload });
+      if (!res.ok) throw new Error("Не удалось сформировать отчёт");
+      var blob = await res.blob();
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "svodka-rukovoditelya.docx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Сформировать отчет";
+    }
+  });
+
   document.getElementById("quickRefreshBtn").addEventListener("click", loadDashboard);
 
   document.getElementById("scrollToSignalsBtn").addEventListener("click", function () {

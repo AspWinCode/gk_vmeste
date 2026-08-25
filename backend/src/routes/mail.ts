@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
 import { analyzeMailText } from "../services/extraction";
+import { notify } from "../services/notify";
 
 export const mailRouter = Router();
 mailRouter.use(requireAuth);
@@ -53,6 +54,15 @@ mailRouter.post("/analyze", async (req, res) => {
       })),
     });
     createdTasks = await prisma.task.findMany({ where: { source: `mail:${message.id}` } });
+  }
+
+  if (analysis.priority === "высокий") {
+    await notify({
+      title: "Письмо высокого приоритета",
+      body: `«${subject || "(без темы)"}» — ${analysis.summary}`,
+      type: "mail",
+      link: "mail.html",
+    });
   }
 
   res.status(201).json({ message, tasks: createdTasks });

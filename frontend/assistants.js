@@ -125,5 +125,67 @@
       : '<div class="footer-note">Все ассистенты в каталоге активны.</div>';
   }
 
+  document.getElementById("toggleAddAssistantBtn").addEventListener("click", function () {
+    var panel = document.getElementById("addAssistantPanel");
+    panel.style.display = panel.style.display === "none" ? "block" : "none";
+    if (panel.style.display === "block") panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  document.getElementById("addAssistantForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var errorBox = document.getElementById("addAssistantError");
+    errorBox.style.display = "none";
+    var payload = {
+      name: document.getElementById("newAssistantName").value,
+      description: document.getElementById("newAssistantDescription").value,
+      inputHint: document.getElementById("newAssistantInput").value,
+      outputHint: document.getElementById("newAssistantOutput").value,
+      tags: document.getElementById("newAssistantTags").value.split(",").map(function (t) { return t.trim(); }).filter(Boolean),
+    };
+    try {
+      var res = await Auth.apiFetch("/assistants", { method: "POST", body: payload });
+      var data = await res.json();
+      if (!res.ok) throw new Error(JSON.stringify(data.error) || "Не удалось добавить ассистента");
+      e.target.reset();
+      document.getElementById("addAssistantPanel").style.display = "none";
+      await loadAssistants();
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.style.display = "block";
+    }
+  });
+
+  var ROLE_LABEL = { EXECUTIVE: "Руководитель", ANALYST: "Аналитик", PROJECT_OFFICE: "Офис проекта", OPERATOR: "Оператор", ADMIN: "Администратор" };
+  var ROLES = Object.keys(ROLE_LABEL);
+
+  document.getElementById("toggleRolesBtn").addEventListener("click", function () {
+    var panel = document.getElementById("rolesPanel");
+    var willShow = panel.style.display === "none";
+    panel.style.display = willShow ? "block" : "none";
+    if (willShow) {
+      loadUsers();
+      panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+
+  async function loadUsers() {
+    var res = await Auth.apiFetch("/users");
+    if (!res.ok) return;
+    var users = await res.json();
+    document.getElementById("usersTableBody").innerHTML = users
+      .map(function (u) {
+        var options = ROLES.map(function (r) { return '<option value="' + r + '"' + (r === u.role ? " selected" : "") + ">" + ROLE_LABEL[r] + "</option>"; }).join("");
+        return (
+          "<tr><td><strong>" + esc(u.name) + "</strong></td><td>" + esc(u.email) + '</td><td><select class="select" data-user-id="' + u.id + '" style="max-width:220px">' + options + "</select></td></tr>"
+        );
+      })
+      .join("");
+    Array.prototype.forEach.call(document.querySelectorAll("[data-user-id]"), function (select) {
+      select.addEventListener("change", async function () {
+        await Auth.apiFetch("/users/" + select.getAttribute("data-user-id") + "/role", { method: "PATCH", body: { role: select.value } });
+      });
+    });
+  }
+
   loadAssistants();
 })();

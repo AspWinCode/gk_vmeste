@@ -24,19 +24,6 @@ enum AssistantStatus {
   NEW
 }
 
-enum AssistantKey {
-  TRANSCRIBER
-  PLANNER
-  FINANCE_ANALYST
-  KSG_CONTROL
-  LAND_SEARCH
-  SUPPORT_MONITOR
-  FINANCE_MONITOR
-  SMM_TELEGRAM
-  SMM_INSTAGRAM
-  MAIL_PARSER
-}
-
 enum TaskStatus {
   OPEN
   IN_PROGRESS
@@ -67,13 +54,14 @@ model User {
 
 model Assistant {
   id          String          @id @default(cuid())
-  key         AssistantKey    @unique
+  key         String          @unique // slug; фиксированный набор для встроенных модулей, свободный для добавленных вручную
   name        String
   description String
   inputHint   String
   outputHint  String
   status      AssistantStatus @default(SETUP)
   tags        String[]
+  builtIn     Boolean         @default(true) // false = добавлен вручную через "Добавить ассистента", ещё не подключён к реальному экрану
   createdAt   DateTime        @default(now())
 }
 
@@ -230,6 +218,22 @@ model MailMessage {
   priority   String // высокий | средний | низкий
   category   String
   createdAt  DateTime @default(now())
+}
+
+// Общая лента уведомлений (не персональная — команда небольшая, весь контур общий,
+// как и остальной дашборд). Создаётся сервисом src/services/notify.ts из значимых
+// событий: критичный этап КСГ, рискованный финсценарий, приоритетное письмо,
+// завершённая транскрибация.
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  type      String // ksg | finance | mail | transcriber
+  link      String? // относительный путь на фронтенде, куда ведёт клик
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([read, createdAt])
 }
 
 // Мост до появления REST-выгрузки из 1С ERP Философт (см. IMPLEMENTATION_PLAN.md):
