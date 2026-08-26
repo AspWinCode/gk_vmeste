@@ -25,6 +25,10 @@ export const env = {
   maxUploadMb: Number(process.env.MAX_UPLOAD_MB ?? 200),
   sttProvider: process.env.STT_PROVIDER ?? "stub",
   sttApiKey: process.env.STT_API_KEY ?? "",
+  // Кастомный эндпоинт для OpenAI-совместимого прокси (например, "AI Tunnel"),
+  // если официальный api.openai.com недоступен напрямую. Пусто = api.openai.com.
+  sttBaseUrl: process.env.STT_BASE_URL || "https://api.openai.com/v1",
+  sttModel: process.env.STT_MODEL ?? "whisper-1",
   smtp: {
     host: process.env.SMTP_HOST ?? "",
     port: Number(process.env.SMTP_PORT ?? 587),
