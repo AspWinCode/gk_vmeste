@@ -119,9 +119,32 @@
                   <span id="summaryText">—</span>
                 </div>
 
+                <div class="transcript-card" id="meetingBlock" style="display:none">
+                  <strong>Предмет обсуждения</strong>
+                  <span id="subjectText">—</span>
+                  <div style="margin-top:14px"><strong>Участники</strong></div>
+                  <div class="transcript-body" id="participantsList"></div>
+                  <div style="margin-top:14px"><strong>Что обсуждали</strong></div>
+                  <div class="transcript-body" id="discussionList"></div>
+                  <div style="margin-top:14px"><strong>Что решили</strong></div>
+                  <div class="transcript-body" id="decisionsList"></div>
+                  <div style="margin-top:14px"><strong>Планы</strong></div>
+                  <div class="transcript-body" id="plansList"></div>
+                </div>
+
                 <div class="transcript-card">
                   <strong>Ключевые тезисы</strong>
                   <div class="transcript-body" id="keyPointsList"></div>
+                </div>
+
+                <div class="transcript-card">
+                  <strong>Email для рассылки</strong>
+                  <div class="tags" id="participantEmailsList" style="margin-top:8px"></div>
+                  <form id="addEmailForm" style="display:flex;gap:8px;margin-top:10px">
+                    <input class="input" id="addEmailInput" type="email" placeholder="имя@почта.ru" style="flex:1" />
+                    <button class="btn btn-secondary" type="submit">Добавить</button>
+                  </form>
+                  <div id="addEmailError" class="footer-note" style="color:#9E3D3D;display:none;margin-top:6px"></div>
                 </div>
 
                 <div class="transcript-card">

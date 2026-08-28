@@ -32,13 +32,18 @@ const worker = new Worker<TranscriptionJobData>(
         },
       });
 
-      const analysis = await analyzeMeetingTranscript(transcription.fullText);
+      const analysis = await analyzeMeetingTranscript(transcription.fullText, record.meetingType);
 
       const updated = await prisma.transcriptionJob.update({
         where: { id: jobId },
         data: {
           summary: analysis.summary,
           keyPoints: analysis.keyPoints,
+          participants: analysis.participants,
+          subject: analysis.subject,
+          discussionPoints: analysis.discussionPoints,
+          decisions: analysis.decisions,
+          plans: analysis.plans,
           status: "DONE",
           progressPercent: 100,
         },

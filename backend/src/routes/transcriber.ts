@@ -74,6 +74,27 @@ transcriberRouter.get("/jobs/:id", async (req, res) => {
   res.json(job);
 });
 
+const addParticipantsSchema = z.object({
+  emails: z.array(z.string().email()).min(1),
+});
+
+// PATCH /api/transcriber/jobs/:id/participants — «Добавить email» уже после загрузки/обработки,
+// не только при первичной форме. Дополняет список, не затирает — дубликаты убираются.
+transcriberRouter.patch("/jobs/:id/participants", async (req, res) => {
+  const parsed = addParticipantsSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const job = await prisma.transcriptionJob.findUnique({ where: { id: req.params.id } });
+  if (!job) return res.status(404).json({ error: "Задача не найдена" });
+
+  const merged = Array.from(new Set([...job.participantEmails, ...parsed.data.emails]));
+  const updated = await prisma.transcriptionJob.update({
+    where: { id: job.id },
+    data: { participantEmails: merged },
+  });
+  res.json(updated);
+});
+
 // POST /api/transcriber/jobs/:id/export — «Скачать .docx» из результата обработки.
 transcriberRouter.post("/jobs/:id/export", async (req, res) => {
   const job = await prisma.transcriptionJob.findUnique({ where: { id: req.params.id } });
@@ -87,6 +108,11 @@ transcriberRouter.post("/jobs/:id/export", async (req, res) => {
     meetingType: job.meetingType,
     summary: job.summary ?? "",
     keyPoints: job.keyPoints,
+    participants: job.participants,
+    subject: job.subject,
+    discussionPoints: job.discussionPoints,
+    decisions: job.decisions,
+    plans: job.plans,
     tasks: tasks.map((t) => ({
       title: t.title,
       owner: t.description?.replace("Ответственный: ", "") ?? null,
@@ -100,7 +126,9 @@ transcriberRouter.post("/jobs/:id/export", async (req, res) => {
   res.download(filePath, `protocol-${job.id}.docx`);
 });
 
-// POST /api/transcriber/jobs/:id/send — email-рассылка протокола участникам встречи.
+// POST /api/transcriber/jobs/:id/send — рассылка протокола участникам встречи. Каждому —
+// отдельное письмо (не один "to" через запятую), чтобы участники не видели чужие адреса
+// и чтобы сбой у одного адресата не блокировал остальных.
 transcriberRouter.post("/jobs/:id/send", async (req, res) => {
   const job = await prisma.transcriptionJob.findUnique({ where: { id: req.params.id } });
   if (!job) return res.status(404).json({ error: "Задача не найдена" });
@@ -111,13 +139,25 @@ transcriberRouter.post("/jobs/:id/send", async (req, res) => {
     return res.status(400).json({ error: "У задачи не указаны email-адреса участников" });
   }
 
-  const result = await sendProtocolEmail({
-    to: job.participantEmails,
-    subject: `Протокол встречи — ${job.meetingType ?? "без темы"}`,
-    html: `<p>${(job.summary ?? "").replace(/\n/g, "<br/>")}</p>`,
-    attachmentPath: job.protocolDocPath,
-    attachmentName: `protocol-${job.id}.docx`,
-  });
+  const subject = `${job.subject || job.meetingType || "Итоги записи"} — саммари от ВМЕСТЕ AI`;
+  const html = `<p>${(job.summary ?? "").replace(/\n/g, "<br/>")}</p><p>Полный протокол — во вложении.</p>`;
 
-  res.json(result);
+  const results = await Promise.all(
+    job.participantEmails.map(async (email) => {
+      try {
+        const result = await sendProtocolEmail({
+          to: [email],
+          subject,
+          html,
+          attachmentPath: job.protocolDocPath!,
+          attachmentName: `protocol-${job.id}.docx`,
+        });
+        return { email, sent: result.sent };
+      } catch (err) {
+        return { email, sent: false, error: err instanceof Error ? err.message : String(err) };
+      }
+    })
+  );
+
+  res.json({ results, sent: results.some((r) => r.sent) });
 });

@@ -174,12 +174,43 @@
       .join("") || '<div class="footer-note">Пока нет тезисов.</div>';
     document.getElementById("transcriptText").textContent = job.transcriptText || "—";
 
+    // Блок по шаблону встречи (участники/предмет/ход/решения/планы) показываем только когда
+    // Claude реально его заполнил — для диктовки эти поля пустые, и блок скрыт целиком,
+    // а не выводится с прочерками по всем пунктам.
+    var isMeetingTemplate = (job.participants && job.participants.length > 0) || job.subject ||
+      (job.discussionPoints && job.discussionPoints.length > 0) || (job.decisions && job.decisions.length > 0) ||
+      (job.plans && job.plans.length > 0);
+    document.getElementById("meetingBlock").style.display = isMeetingTemplate ? "block" : "none";
+    if (isMeetingTemplate) {
+      document.getElementById("subjectText").textContent = job.subject || "—";
+      renderQuoteList("participantsList", job.participants, "Участники не определены.");
+      renderQuoteList("discussionList", job.discussionPoints, "—");
+      renderQuoteList("decisionsList", job.decisions, "—");
+      renderQuoteList("plansList", job.plans, "—");
+    }
+
+    renderParticipantEmails(job.participantEmails || []);
+
     var exportBtn = document.getElementById("exportBtn");
     var sendBtn = document.getElementById("sendBtn");
     exportBtn.disabled = job.status !== "DONE";
     sendBtn.disabled = job.status !== "DONE" || !job.participantEmails || job.participantEmails.length === 0;
     exportBtn.onclick = function () { exportJob(job.id); };
     sendBtn.onclick = function () { sendJob(job.id); };
+  }
+
+  function renderQuoteList(elId, items, emptyText) {
+    var el = document.getElementById(elId);
+    el.innerHTML = (items && items.length > 0)
+      ? items.map(function (p) { return '<div class="quote">' + esc(p) + "</div>"; }).join("")
+      : '<div class="footer-note">' + esc(emptyText) + "</div>";
+  }
+
+  function renderParticipantEmails(emails) {
+    var el = document.getElementById("participantEmailsList");
+    el.innerHTML = emails.length > 0
+      ? emails.map(function (e) { return '<span class="tag">' + esc(e) + "</span>"; }).join("")
+      : '<span class="footer-note">Email пока не добавлены.</span>';
   }
 
   function renderTasks(tasks) {
@@ -220,10 +251,22 @@
     var res = await Auth.apiFetch("/transcriber/jobs/" + id + "/send", { method: "POST" });
     var data = await res.json();
     if (!res.ok) {
-      alert(data.error || "Не удалось отправить письмо");
+      alert(typeof data.error === "string" ? data.error : JSON.stringify(data.error) || "Не удалось отправить письма");
       return;
     }
-    alert(data.sent ? "Протокол отправлен участникам." : "SMTP не настроен на сервере — письмо не отправлено (см. backend/.env).");
+    if (!data.sent) {
+      alert("SMTP не настроен на сервере — письма не отправлены (см. backend/.env).");
+      return;
+    }
+    var failed = data.results.filter(function (r) { return !r.sent; });
+    if (failed.length === 0) {
+      alert("Письма отправлены каждому участнику отдельно: " + data.results.length + " шт.");
+    } else {
+      alert(
+        "Отправлено: " + (data.results.length - failed.length) + " из " + data.results.length +
+        ". Не удалось: " + failed.map(function (r) { return r.email; }).join(", ")
+      );
+    }
   }
 
   document.getElementById("uploadForm").addEventListener("submit", async function (e) {
@@ -257,6 +300,33 @@
     } finally {
       btn.disabled = false;
       btn.textContent = "Загрузить и обработать";
+    }
+  });
+
+  document.getElementById("addEmailForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var errorBox = document.getElementById("addEmailError");
+    errorBox.style.display = "none";
+    var input = document.getElementById("addEmailInput");
+    var email = input.value.trim();
+    if (!email || !state.selectedId) return;
+
+    try {
+      var res = await Auth.apiFetch("/transcriber/jobs/" + state.selectedId + "/participants", {
+        method: "PATCH",
+        body: { emails: [email] },
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : JSON.stringify(data.error) || "Не удалось добавить email");
+      input.value = "";
+      renderParticipantEmails(data.participantEmails || []);
+      document.getElementById("sendBtn").disabled = false;
+      // обновляем и в очереди/истории, чтобы список email не потерялся при переоткрытии
+      var job = state.jobs.find(function (j) { return j.id === state.selectedId; });
+      if (job) job.participantEmails = data.participantEmails;
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.style.display = "block";
     }
   });
 

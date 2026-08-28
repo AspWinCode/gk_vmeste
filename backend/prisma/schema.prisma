@@ -110,6 +110,13 @@ model TranscriptionJob {
   speakerSegments Json? // [{speaker, start, end, text}]
   summary         String?
   keyPoints       String[]
+  // Заполняются только для "встречных" типов (Совещание/Интервью/Звонок) — см. claude.ts.
+  // Для Диктовки Claude намеренно оставляет их пустыми, там нужен только summary.
+  participants      String[] @default([])
+  subject           String?
+  discussionPoints  String[] @default([])
+  decisions         String[] @default([])
+  plans             String[] @default([])
   protocolDocPath String?
 
   progressPercent Int    @default(0)
