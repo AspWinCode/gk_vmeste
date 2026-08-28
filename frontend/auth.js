@@ -186,9 +186,58 @@
     });
   }
 
+  // Кнопка-гамбургер + затемнение фона для планшета/мобильного: на узких экранах
+  // боковая панель (.sidebar) становится выезжающим меню (см. @media в styles.css),
+  // здесь — только открытие/закрытие. Разметку не дублируем на каждой странице.
+  function mountMobileNav() {
+    var sidebar = document.querySelector(".sidebar");
+    var topbar = document.querySelector(".topbar");
+    if (!sidebar || !topbar) return;
+
+    var toggle = document.createElement("button");
+    toggle.type = "button";
+    toggle.className = "icon-btn mobile-nav-toggle";
+    toggle.setAttribute("aria-label", "Открыть меню");
+    toggle.textContent = "☰";
+    topbar.insertBefore(toggle, topbar.firstChild);
+
+    var backdrop = document.createElement("div");
+    backdrop.className = "sidebar-backdrop";
+    document.body.appendChild(backdrop);
+
+    function open() {
+      sidebar.classList.add("is-open");
+      backdrop.classList.add("is-visible");
+      document.body.style.overflow = "hidden";
+    }
+    function close() {
+      sidebar.classList.remove("is-open");
+      backdrop.classList.remove("is-visible");
+      document.body.style.overflow = "";
+    }
+
+    toggle.addEventListener("click", function () {
+      if (sidebar.classList.contains("is-open")) close();
+      else open();
+    });
+    backdrop.addEventListener("click", close);
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") close();
+    });
+    // переход по пункту меню — закрыть выезжающую панель, чтобы не оставалась
+    // открытой поверх следующей страницы
+    Array.prototype.forEach.call(sidebar.querySelectorAll(".nav-item"), function (link) {
+      link.addEventListener("click", close);
+    });
+    window.addEventListener("resize", function () {
+      if (window.innerWidth > 1020) close();
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", function () {
     renderUserBadge();
     mountNotifications();
     mountSearchShortcut();
+    mountMobileNav();
   });
 })();
