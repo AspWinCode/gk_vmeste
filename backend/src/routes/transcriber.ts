@@ -16,10 +16,17 @@ transcriberRouter.use(requireAuth);
 const uploadDir = path.resolve(env.uploadDir, "audio");
 fs.mkdirSync(uploadDir, { recursive: true });
 
+// Busboy (используется multer) декодирует поле filename как latin1, даже когда браузер
+// реально прислал его в UTF-8 (кириллица в имени файла) — без этого получаем "Ð¦Ð½..."
+// вместо читаемого имени. Перекодируем обратно в UTF-8 сразу при получении файла.
+function fixFilenameEncoding(name: string): string {
+  return Buffer.from(name, "latin1").toString("utf8");
+}
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: uploadDir,
-    filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
+    filename: (_req, file, cb) => cb(null, `${Date.now()}-${fixFilenameEncoding(file.originalname)}`),
   }),
   limits: { fileSize: env.maxUploadMb * 1024 * 1024 },
 });
@@ -44,7 +51,7 @@ transcriberRouter.post("/jobs", upload.single("audio"), async (req, res) => {
   const job = await prisma.transcriptionJob.create({
     data: {
       audioFilePath: req.file.path,
-      audioFileName: req.file.originalname,
+      audioFileName: fixFilenameEncoding(req.file.originalname),
       language: parsed.data.language,
       meetingType: parsed.data.meetingType,
       participantEmails: parsed.data.participantEmails,

@@ -18,7 +18,9 @@ RUN npm run build
 FROM node:20-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apk add --no-cache openssl
+# ffmpeg — worker сжимает и режет аудио перед отправкой в Whisper API (см. speechToText.ts):
+# у Whisper жёсткий лимит 25МБ на файл, длинные записи совещаний иначе не проходят.
+RUN apk add --no-cache openssl ffmpeg
 COPY package.json package-lock.json* ./
 RUN npm install --omit=dev && npm cache clean --force
 COPY --from=build /app/dist ./dist
