@@ -164,7 +164,11 @@ class OpenAiWhisperProvider implements SpeechToTextProvider {
     }
 
     const data = (await res.json()) as OpenAiVerboseResponse;
-    return { text: data.text.trim(), segments: data.segments ?? [] };
+    const segments = data.segments ?? [];
+    // data.text — один сплошной абзац без разбивки; сегменты Whisper режет по паузам/фразам,
+    // так что текст по сегментам читается куда ближе к естественной речи с переносами строк.
+    const text = segments.length > 0 ? segments.map((s) => s.text.trim()).join("\n") : data.text.trim();
+    return { text, segments };
   }
 }
 

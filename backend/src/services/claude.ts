@@ -114,7 +114,21 @@ export async function analyzeMeetingTranscript(
   if (!toolUse || toolUse.type !== "tool_use") {
     throw new Error("Claude не вернул структурированный результат анализа встречи");
   }
-  return toolUse.input as MeetingAnalysis;
+
+  // tool_choice форсирует вызов инструмента, но не гарантирует железно, что модель заполнит
+  // каждое required-поле схемы — на сложной/несвязной расшифровке Claude иногда пропускает
+  // одно из полей целиком. Без дефолтов это роняет worker на `analysis.tasks.length` и т.п.
+  const raw = toolUse.input as Partial<MeetingAnalysis>;
+  return {
+    summary: raw.summary ?? "",
+    keyPoints: raw.keyPoints ?? [],
+    tasks: raw.tasks ?? [],
+    participants: raw.participants ?? [],
+    subject: raw.subject ?? null,
+    discussionPoints: raw.discussionPoints ?? [],
+    decisions: raw.decisions ?? [],
+    plans: raw.plans ?? [],
+  };
 }
 
 export interface FinanceScenarioForReview {
