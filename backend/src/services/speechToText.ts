@@ -178,6 +178,10 @@ class OpenAiWhisperProvider implements SpeechToTextProvider {
     form.append("model", env.sttModel);
     form.append("language", language);
     form.append("response_format", isDiarizing ? "diarized_json" : "verbose_json");
+    // AI Tunnel требует этот параметр для diarize-моделей (хотя в их доке он значится
+    // опциональным) — без него /audio/transcriptions отвечает 400 "chunking_strategy is
+    // required for diarization models".
+    if (isDiarizing) form.append("chunking_strategy", "auto");
 
     const res = await fetch(`${env.sttBaseUrl}/audio/transcriptions`, {
       method: "POST",
