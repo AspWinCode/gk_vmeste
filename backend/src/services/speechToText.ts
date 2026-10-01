@@ -93,6 +93,19 @@ const COMPRESSED_BITRATE_KBPS = 32; // моно 16кГц/32кбит — с за�
 // выбрана через STT_MODEL — дефолт (whisper-1) её не требует и работает как раньше.
 const DIARIZE_MODEL = "gpt-4o-transcribe-diarize";
 
+// DIARIZE_MODEL ненадёжно держит язык на сложном многоголосом реальном аудио — параметр
+// language у неё, похоже, не жёсткое ограничение (как у whisper-1), а просто подсказка:
+// на чистой одноголосой тестовой записи транскрибировала верно на русском, а на реальной
+// записи совещания часть реплик внезапно ушла переводом на английский. prompt для принудительной
+// подсказки языка эта модель не поддерживает вообще ("Prompt is not supported for diarization
+// models") — оба факта проверены напрямую через их API, не с чужих слов.
+//
+// Поэтому текст и спикеры берутся РАЗНЫМИ моделями на одном и том же куске: whisper-1 — для
+// надёжного текста на нужном языке (он язык держит жёстко), DIARIZE_MODEL — только для таймкодов
+// говорящих, а дальше реплики сшиваются по пересечению временных интервалов. Дороже и чуть
+// дольше (два запроса на кусок вместо одного, но параллельно), зато текст не "уезжает" в английский.
+const WHISPER_TEXT_MODEL = "whisper-1";
+
 // У diarize-модели ОТДЕЛЬНЫЙ жёсткий лимит — не по размеру файла, а по длительности:
 // "audio duration ... longer than 1400 seconds which is the maximum for this model" (реальный
 // ответ AI Tunnel). При нашем битрейте сжатия (32кбит моно) запись на ~29 минут укладывается
@@ -227,24 +240,27 @@ class OpenAiWhisperProvider implements SpeechToTextProvider {
     }) as unknown as Promise<Response>;
   }
 
-  private async transcribeSingleFile(
+  // Один запрос к /audio/transcriptions с конкретной моделью и форматом ответа — переиспользуется
+  // и для текстового прохода (whisper-1), и для прохода диаризации (DIARIZE_MODEL).
+  private async callTranscriptionApi(
     filePath: string,
-    language: string
-  ): Promise<{ text: string; segments: (OpenAiVerboseSegment & { speaker: string })[] }> {
-    const isDiarizing = env.sttModel === DIARIZE_MODEL;
+    language: string,
+    model: string,
+    responseFormat: "verbose_json" | "diarized_json"
+  ): Promise<OpenAiVerboseResponse | OpenAiDiarizedResponse> {
     const fileBuffer = fs.readFileSync(filePath);
     // Конкретно FormData/Blob из пакета undici, не глобальные — fetch тоже из undici (см.
     // комментарий у sttDispatcher) и не распознаёт глобальный FormData как "свой", из-за чего
     // тело запроса улетало как голый текст вместо multipart/form-data (AI Tunnel отвечал 400).
     const form = new UndiciFormData();
     form.append("file", new Blob([fileBuffer], { type: "audio/mpeg" }), "audio.mp3");
-    form.append("model", env.sttModel);
+    form.append("model", model);
     form.append("language", language);
-    form.append("response_format", isDiarizing ? "diarized_json" : "verbose_json");
+    form.append("response_format", responseFormat);
     // AI Tunnel требует этот параметр для diarize-моделей (хотя в их доке он значится
     // опциональным) — без него /audio/transcriptions отвечает 400 "chunking_strategy is
     // required for diarization models".
-    if (isDiarizing) form.append("chunking_strategy", "auto");
+    if (responseFormat === "diarized_json") form.append("chunking_strategy", "auto");
 
     // При мелкой нарезке на один файл выходит много последовательных запросов (например,
     // ~12 для получасовой записи при чанке в 150с) — с ростом их числа растёт и шанс поймать
@@ -270,18 +286,62 @@ class OpenAiWhisperProvider implements SpeechToTextProvider {
       throw new Error(`Whisper API вернул ошибку ${res.status}: ${detail.slice(0, 300)}`);
     }
 
+    return res.json() as Promise<OpenAiVerboseResponse | OpenAiDiarizedResponse>;
+  }
+
+  // Берёт для каждого реплики-сегмента whisper-1 (надёжный текст) ближайший по времени
+  // сегмент диаризации (кому реально принадлежит эта реплика) — по максимальному пересечению
+  // интервалов, с фоллбэком на ближайший по времени старта, если пересечения нет вообще
+  // (например, диаризация иначе разбила паузы).
+  private mergeWithSpeakers(
+    textSegments: OpenAiVerboseSegment[],
+    diarizeSegments: OpenAiDiarizedSegment[]
+  ): (OpenAiVerboseSegment & { speaker: string })[] {
+    if (diarizeSegments.length === 0) {
+      return textSegments.map((s) => ({ ...s, speaker: "Участник" }));
+    }
+    return textSegments.map((ts) => {
+      let best: OpenAiDiarizedSegment | null = null;
+      let bestOverlap = 0;
+      for (const ds of diarizeSegments) {
+        const overlap = Math.min(ts.end, ds.end) - Math.max(ts.start, ds.start);
+        if (overlap > bestOverlap) {
+          bestOverlap = overlap;
+          best = ds;
+        }
+      }
+      if (!best) {
+        best = diarizeSegments.reduce((closest, ds) =>
+          Math.abs(ds.start - ts.start) < Math.abs(closest.start - ts.start) ? ds : closest
+        );
+      }
+      return { ...ts, speaker: `Спикер ${best.speaker}` };
+    });
+  }
+
+  private async transcribeSingleFile(
+    filePath: string,
+    language: string
+  ): Promise<{ text: string; segments: (OpenAiVerboseSegment & { speaker: string })[] }> {
+    const isDiarizing = env.sttModel === DIARIZE_MODEL;
+
     if (isDiarizing) {
-      const data = (await res.json()) as OpenAiDiarizedResponse;
-      const segments = data.segments ?? [];
-      // Буквенную метку модели ("A", "B", ...) делаем читаемой ("Спикер A") и вшиваем прямо
-      // в текст построчно — это единственное место в интерфейсе, где показывается расшифровка
-      // (speakerSegments в БД никто отдельно не рендерит), поэтому разметка по говорящим
-      // должна быть видна сразу в самом тексте, а не только в сыром JSON.
-      const text = segments.map((s) => `Спикер ${s.speaker}: ${s.text.trim()}`).join("\n");
-      return { text, segments: segments.map((s) => ({ ...s, speaker: `Спикер ${s.speaker}` })) };
+      const [textResult, diarizeResult] = await Promise.all([
+        this.callTranscriptionApi(filePath, language, WHISPER_TEXT_MODEL, "verbose_json") as Promise<OpenAiVerboseResponse>,
+        this.callTranscriptionApi(filePath, language, DIARIZE_MODEL, "diarized_json") as Promise<OpenAiDiarizedResponse>,
+      ]);
+      const textSegments = textResult.segments ?? [];
+      const merged = this.mergeWithSpeakers(textSegments, diarizeResult.segments ?? []);
+      // Вшиваем метку спикера прямо в текст построчно — это единственное место в интерфейсе,
+      // где показывается расшифровка (speakerSegments в БД никто отдельно не рендерит).
+      const text =
+        merged.length > 0
+          ? merged.map((s) => `${s.speaker}: ${s.text.trim()}`).join("\n")
+          : textResult.text.trim();
+      return { text, segments: merged.length > 0 ? merged : [{ start: 0, end: 0, text: textResult.text.trim(), speaker: "Участник" }] };
     }
 
-    const data = (await res.json()) as OpenAiVerboseResponse;
+    const data = (await this.callTranscriptionApi(filePath, language, env.sttModel, "verbose_json")) as OpenAiVerboseResponse;
     const segments = data.segments ?? [];
     // data.text — один сплошной абзац без разбивки; сегменты Whisper режет по паузам/фразам,
     // так что текст по сегментам читается куда ближе к естественной речи с переносами строк.
