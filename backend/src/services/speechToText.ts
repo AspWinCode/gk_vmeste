@@ -80,6 +80,14 @@ const COMPRESSED_BITRATE_KBPS = 32; // моно 16кГц/32кбит — с за�
 // выбрана через STT_MODEL — дефолт (whisper-1) её не требует и работает как раньше.
 const DIARIZE_MODEL = "gpt-4o-transcribe-diarize";
 
+// У diarize-модели ОТДЕЛЬНЫЙ жёсткий лимит — не по размеру файла, а по длительности:
+// "audio duration ... longer than 1400 seconds which is the maximum for this model" (реальный
+// ответ AI Tunnel). При нашем битрейте сжатия (32кбит моно) запись на ~29 минут укладывается
+// в 25МБ размером и ПОКАЗАЛАСЬ бы коду "не требующей нарезки" по старой логике (только по
+// размеру) — поэтому для этой модели длительность проверяется отдельно через ffprobe.
+const DIARIZE_MAX_DURATION_SECONDS = 1400;
+const DIARIZE_SAFE_DURATION_SECONDS = 1200; // запас от жёсткого лимита на неточность нарезки
+
 // OpenAI Whisper-совместимый провайдер (или прокси типа AI Tunnel) — платный по минутам API.
 // Диаризация по спикерам есть только у DIARIZE_MODEL; на остальных моделях все сегменты
 // помечаются единым безымянным "Участник" — для извлечения поручений/саммари Claude это не
@@ -116,10 +124,17 @@ class OpenAiWhisperProvider implements SpeechToTextProvider {
       }
 
       const compressedSize = fs.statSync(compressedPath).size;
+      const isDiarizing = env.sttModel === DIARIZE_MODEL;
+      let exceedsDuration = false;
+      if (isDiarizing) {
+        const durationSeconds = await this.getAudioDurationSeconds(compressedPath).catch(() => null);
+        exceedsDuration = durationSeconds !== null && durationSeconds > DIARIZE_MAX_DURATION_SECONDS;
+      }
+
       const chunkPaths =
-        compressedSize <= WHISPER_SAFE_LIMIT_BYTES
+        compressedSize <= WHISPER_SAFE_LIMIT_BYTES && !exceedsDuration
           ? [compressedPath]
-          : await this.splitByDuration(compressedPath, tmpDir);
+          : await this.splitByDuration(compressedPath, tmpDir, isDiarizing);
 
       const fullTextParts: string[] = [];
       const allSegments: SpeakerSegment[] = [];
@@ -146,11 +161,28 @@ class OpenAiWhisperProvider implements SpeechToTextProvider {
     }
   }
 
+  private async getAudioDurationSeconds(filePath: string): Promise<number> {
+    const { stdout } = await execFileAsync("ffprobe", [
+      "-v", "error",
+      "-show_entries", "format=duration",
+      "-of", "csv=p=0",
+      filePath,
+    ]);
+    const seconds = parseFloat(stdout.trim());
+    if (!Number.isFinite(seconds)) throw new Error("ffprobe не вернул длительность файла");
+    return seconds;
+  }
+
   // Режет уже сжатый mp3 по времени без повторного перекодирования (-c copy — быстро,
-  // без потери качества). Длина куска подобрана так, чтобы при известном битрейте компрессии
-  // каждый кусок гарантированно укладывался в лимит Whisper.
-  private async splitByDuration(compressedPath: string, tmpDir: string): Promise<string[]> {
-    const segmentSeconds = Math.max(60, Math.floor((WHISPER_SAFE_LIMIT_BYTES * 8) / (COMPRESSED_BITRATE_KBPS * 1000)));
+  // без потери качества). Длина куска — минимум из двух лимитов: по размеру (из битрейта
+  // компрессии) и, для diarize-модели, по длительности (DIARIZE_SAFE_DURATION_SECONDS) —
+  // смотря какой из них жёстче для конкретной записи.
+  private async splitByDuration(compressedPath: string, tmpDir: string, isDiarizing: boolean): Promise<string[]> {
+    const sizeBasedSeconds = Math.floor((WHISPER_SAFE_LIMIT_BYTES * 8) / (COMPRESSED_BITRATE_KBPS * 1000));
+    const segmentSeconds = Math.max(
+      60,
+      isDiarizing ? Math.min(sizeBasedSeconds, DIARIZE_SAFE_DURATION_SECONDS) : sizeBasedSeconds
+    );
     const pattern = path.join(tmpDir, "chunk-%03d.mp3");
     await execFileAsync("ffmpeg", [
       "-y",
