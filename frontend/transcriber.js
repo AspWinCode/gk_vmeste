@@ -1,5 +1,5 @@
 (function () {
-  var state = { jobs: [], selectedId: null, pollHandle: null, query: "" };
+  var state = { jobs: [], selectedId: null, pollHandle: null, query: "", lastDetailStatus: null };
 
   function filteredJobs() {
     if (!state.query) return state.jobs;
@@ -62,7 +62,11 @@
     var anyActive = state.jobs.some(function (j) { return ACTIVE_STATUSES.indexOf(j.status) !== -1; });
     if (state.selectedId) {
       var selected = state.jobs.find(function (j) { return j.id === state.selectedId; });
-      if (selected && ACTIVE_STATUSES.indexOf(selected.status) !== -1) {
+      // Перезагружаем панель результата, пока статус активен, И ещё один раз, когда он
+      // только что сменился — иначе при переходе QUEUED/TRANSCRIBING/SUMMARIZING → DONE/FAILED
+      // панель навсегда застревает на последнем увиденном "в процессе" состоянии: как только
+      // статус перестаёт быть активным, опрос просто перестаёт её трогать.
+      if (selected && (ACTIVE_STATUSES.indexOf(selected.status) !== -1 || selected.status !== state.lastDetailStatus)) {
         loadJobDetail(state.selectedId);
       }
     }
@@ -142,6 +146,7 @@
     var res = await Auth.apiFetch("/transcriber/jobs/" + id);
     if (!res.ok) return;
     var job = await res.json();
+    if (job.id === state.selectedId) state.lastDetailStatus = job.status;
     renderJobDetail(job);
 
     if (job.status === "DONE") {
