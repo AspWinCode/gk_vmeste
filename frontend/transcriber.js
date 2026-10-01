@@ -193,10 +193,10 @@
     document.getElementById("meetingBlock").style.display = isMeetingTemplate ? "block" : "none";
     if (isMeetingTemplate) {
       document.getElementById("subjectText").textContent = job.subject || "—";
-      renderQuoteList("participantsList", job.participants, "Участники не определены.");
-      renderQuoteList("discussionList", job.discussionPoints, "—");
-      renderQuoteList("decisionsList", job.decisions, "—");
-      renderQuoteList("plansList", job.plans, "—");
+      renderParticipantTags("participantsList", job.participants, "Участники не определены.");
+      renderCompactList("discussionList", job.discussionPoints, "—");
+      renderCompactList("decisionsList", job.decisions, "—");
+      renderCompactList("plansList", job.plans, "—");
     }
 
     renderParticipantEmails(job.participantEmails || []);
@@ -209,11 +209,22 @@
     sendBtn.onclick = function () { sendJob(job.id); };
   }
 
-  function renderQuoteList(elId, items, emptyText) {
+  // Компактный маркированный список вместо отдельной карточки на каждый пункт — при 15-20
+  // пунктах обсуждения (реальная встреча) карточки растягивали страницу в несколько экранов вниз.
+  function renderCompactList(elId, items, emptyText) {
     var el = document.getElementById(elId);
     el.innerHTML = (items && items.length > 0)
-      ? items.map(function (p) { return '<div class="quote">' + esc(p) + "</div>"; }).join("")
+      ? '<ul class="compact-list">' + items.map(function (p) { return "<li>" + esc(p) + "</li>"; }).join("") + "</ul>"
       : '<div class="footer-note">' + esc(emptyText) + "</div>";
+  }
+
+  // Участники — короткие подписи ("Спикер A"), отдельная карточка на каждого была избыточной;
+  // компактные чипы в строку, как email-теги ниже.
+  function renderParticipantTags(elId, items, emptyText) {
+    var el = document.getElementById(elId);
+    el.innerHTML = (items && items.length > 0)
+      ? items.map(function (p) { return '<span class="tag">' + esc(p) + "</span>"; }).join("")
+      : '<span class="footer-note">' + esc(emptyText) + "</span>";
   }
 
   function renderParticipantEmails(emails) {
