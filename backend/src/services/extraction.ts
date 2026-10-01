@@ -130,7 +130,7 @@ const LAND_JSON_SHAPE = `{
 
 export async function extractLandListing(rawText: string): Promise<LandListingExtraction> {
   return requestStructuredJson<LandListingExtraction>({
-    maxTokens: 600,
+    maxTokens: 1500,
     system:
       "Ты помогаешь девелоперу структурировать объявление о продаже земельного участка или объекта недвижимости. " +
       "Извлеки только то, что явно есть в тексте. Если данных нет — верни null для чисел или короткую пометку в riskNotes, не выдумывай цифры.\n\n" +
@@ -158,7 +158,7 @@ const MAIL_JSON_SHAPE = `{
 // какие письма читать, только структурируем то, что уже показали.
 export async function analyzeMailText(rawEmail: string): Promise<MailAnalysis> {
   return requestStructuredJson<MailAnalysis>({
-    maxTokens: 700,
+    maxTokens: 1500,
     system:
       'Ты — референт группы компаний "ВМЕСТЕ" (девелопмент, пансионаты МИРРА, розница Nomination). ' +
       "Тебе дают текст письма (тема + содержание). Определи приоритет, категорию и явно поставленные поручения. " +
@@ -186,7 +186,7 @@ const SUPPORT_JSON_SHAPE = `{
 
 export async function extractSupportProgram(rawText: string): Promise<SupportProgramExtraction> {
   return requestStructuredJson<SupportProgramExtraction>({
-    maxTokens: 500,
+    maxTokens: 1200,
     system:
       'Ты помогаешь структурировать найденную меру поддержки бизнеса (льгота, субсидия, кредитная программа) для группы компаний "ВМЕСТЕ" ' +
       "(девелопмент, пансионаты для пожилых МИРРА, розница ювелирных изделий Nomination). Извлеки только то, что явно есть в тексте, не придумывай условия программы.\n\n" +
