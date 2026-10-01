@@ -2,8 +2,10 @@ import Anthropic from "@anthropic-ai/sdk";
 import { XMLParser } from "fast-xml-parser";
 import { env } from "../lib/env";
 
-// authToken (не apiKey!) — см. комментарий в services/claude.ts про Authorization: Bearer для AI Tunnel.
-const client = new Anthropic({ authToken: env.anthropicApiKey, baseURL: env.anthropicBaseUrl });
+// authToken (не apiKey!) + apiKey: null — см. комментарий в services/claude.ts: без явного
+// apiKey: null конструктор SDK сам подхватывает ANTHROPIC_API_KEY из process.env и предпочитает
+// его authToken'у, так что Bearer-заголовок тихо не отправляется.
+const client = new Anthropic({ apiKey: null, authToken: env.anthropicApiKey, baseURL: env.anthropicBaseUrl });
 
 /**
  * Осознанное ограничение: сервис НЕ обходит госторги/ДомРФ/Авито/Циан автоматически —

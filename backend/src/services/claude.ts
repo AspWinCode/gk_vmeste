@@ -4,7 +4,10 @@ import { env } from "../lib/env";
 // authToken (не apiKey!) — шлёт заголовок Authorization: Bearer вместо x-api-key.
 // Нужно для прокси вроде AI Tunnel, которые проверяют именно Bearer-токен; настоящий
 // api.anthropic.com принимает оба варианта одинаково, так что это безопасно и без прокси.
-const client = new Anthropic({ authToken: env.anthropicApiKey, baseURL: env.anthropicBaseUrl });
+// apiKey: null обязателен — иначе конструктор SDK сам подхватит apiKey из
+// process.env.ANTHROPIC_API_KEY (это его собственный дефолт параметра, не наш env.ts),
+// а при наличии apiKey SDK всегда предпочитает x-api-key и authToken тихо игнорируется.
+const client = new Anthropic({ apiKey: null, authToken: env.anthropicApiKey, baseURL: env.anthropicBaseUrl });
 
 const COMPANY_CONTEXT = `Мы группа компаний, объединяющих три направления деятельности:
 ГК ВМЕСТЕ — девелопмент в Иркутской области;
