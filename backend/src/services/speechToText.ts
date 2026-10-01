@@ -52,16 +52,39 @@ interface OpenAiVerboseResponse {
   segments?: OpenAiVerboseSegment[];
 }
 
+// diarized_json — отдельный формат ответа у gpt-4o-transcribe-diarize (единственная модель
+// в каталоге AI Tunnel с реальной диаризацией, см. комментарий у DIARIZE_MODEL ниже):
+// сегменты приходят с буквенной меткой говорящего ("A", "B", ...), остальные модели
+// (whisper-1 и т.п.) такого поля не возвращают вообще.
+interface OpenAiDiarizedSegment {
+  start: number;
+  end: number;
+  text: string;
+  speaker: string;
+}
+
+interface OpenAiDiarizedResponse {
+  text: string;
+  segments?: OpenAiDiarizedSegment[];
+}
+
 // Жёсткий лимит самого Whisper API (OpenAI и большинство совместимых прокси, включая AI Tunnel) —
 // 25МБ на файл. Это ограничение провайдера, а не MAX_UPLOAD_MB нашего сервера: увеличение
 // MAX_UPLOAD_MB решает только приём файла на наш backend, а не то, что примет Whisper дальше.
 const WHISPER_SAFE_LIMIT_BYTES = 24 * 1024 * 1024; // чуть меньше 25МБ — запас на неточность сегментации по времени
 const COMPRESSED_BITRATE_KBPS = 32; // моно 16кГц/32кбит — с запасом достаточно для распознавания речи, сильно уменьшает размер
 
-// OpenAI Whisper (или совместимый прокси, например "AI Tunnel") — платный по минутам API,
-// без диаризации по спикерам (whisper-1 не различает голоса), поэтому все сегменты
-// помечены единым безымянным "спикером". Для сравнения текста/тезисов между участниками
-// диаризация не нужна — Claude извлекает поручения по содержанию, а не по говорящему.
+// Единственная модель с реальной диаризацией в каталоге AI Tunnel (проверено напрямую через
+// их API) — остальные (whisper-1, whisper-large-v3, chirp-3 и т.д.) спикеров не различают
+// вообще. Дороже whisper-1 (2.2-3₽/мин против 1.2₽/мин), поэтому включается только если явно
+// выбрана через STT_MODEL — дефолт (whisper-1) её не требует и работает как раньше.
+const DIARIZE_MODEL = "gpt-4o-transcribe-diarize";
+
+// OpenAI Whisper-совместимый провайдер (или прокси типа AI Tunnel) — платный по минутам API.
+// Диаризация по спикерам есть только у DIARIZE_MODEL; на остальных моделях все сегменты
+// помечаются единым безымянным "Участник" — для извлечения поручений/саммари Claude это не
+// мешает (он работает по содержанию, а не по говорящему), но в самой расшифровке реплики не
+// подписаны по именам/буквам.
 //
 // Длинные записи (совещания на час и больше) почти всегда превышают 25МБ лимит Whisper в
 // исходном виде — поэтому перед отправкой файл всегда перекодируется в компактный моно mp3
@@ -106,7 +129,7 @@ class OpenAiWhisperProvider implements SpeechToTextProvider {
         const chunk = await this.transcribeSingleFile(chunkPath, language);
         if (chunk.text) fullTextParts.push(chunk.text);
         for (const seg of chunk.segments) {
-          allSegments.push({ speaker: "Участник", start: seg.start + offsetSeconds, end: seg.end + offsetSeconds, text: seg.text });
+          allSegments.push({ speaker: seg.speaker, start: seg.start + offsetSeconds, end: seg.end + offsetSeconds, text: seg.text });
         }
         // Смещение для следующего куска — по концу последнего распознанного сегмента этого куска
         // (точная длительность файла нам не нужна больше нигде, поэтому не тянем отдельно через ffprobe).
@@ -144,13 +167,17 @@ class OpenAiWhisperProvider implements SpeechToTextProvider {
       .map((f) => path.join(tmpDir, f));
   }
 
-  private async transcribeSingleFile(filePath: string, language: string): Promise<{ text: string; segments: OpenAiVerboseSegment[] }> {
+  private async transcribeSingleFile(
+    filePath: string,
+    language: string
+  ): Promise<{ text: string; segments: (OpenAiVerboseSegment & { speaker: string })[] }> {
+    const isDiarizing = env.sttModel === DIARIZE_MODEL;
     const fileBuffer = fs.readFileSync(filePath);
     const form = new FormData();
     form.append("file", new Blob([fileBuffer], { type: "audio/mpeg" }), "audio.mp3");
     form.append("model", env.sttModel);
     form.append("language", language);
-    form.append("response_format", "verbose_json");
+    form.append("response_format", isDiarizing ? "diarized_json" : "verbose_json");
 
     const res = await fetch(`${env.sttBaseUrl}/audio/transcriptions`, {
       method: "POST",
@@ -163,12 +190,23 @@ class OpenAiWhisperProvider implements SpeechToTextProvider {
       throw new Error(`Whisper API вернул ошибку ${res.status}: ${detail.slice(0, 300)}`);
     }
 
+    if (isDiarizing) {
+      const data = (await res.json()) as OpenAiDiarizedResponse;
+      const segments = data.segments ?? [];
+      // Буквенную метку модели ("A", "B", ...) делаем читаемой ("Спикер A") и вшиваем прямо
+      // в текст построчно — это единственное место в интерфейсе, где показывается расшифровка
+      // (speakerSegments в БД никто отдельно не рендерит), поэтому разметка по говорящим
+      // должна быть видна сразу в самом тексте, а не только в сыром JSON.
+      const text = segments.map((s) => `Спикер ${s.speaker}: ${s.text.trim()}`).join("\n");
+      return { text, segments: segments.map((s) => ({ ...s, speaker: `Спикер ${s.speaker}` })) };
+    }
+
     const data = (await res.json()) as OpenAiVerboseResponse;
     const segments = data.segments ?? [];
     // data.text — один сплошной абзац без разбивки; сегменты Whisper режет по паузам/фразам,
     // так что текст по сегментам читается куда ближе к естественной речи с переносами строк.
     const text = segments.length > 0 ? segments.map((s) => s.text.trim()).join("\n") : data.text.trim();
-    return { text, segments };
+    return { text, segments: segments.map((s) => ({ ...s, speaker: "Участник" })) };
   }
 }
 
