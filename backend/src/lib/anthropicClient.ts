@@ -19,21 +19,7 @@ function stripJsonFence(raw: string): string {
     .trim();
 }
 
-/**
- * Структурированный JSON-ответ ОБЫЧНЫМ текстом, без tools/tool_choice.
- *
- * Намеренно не используем форсированный tool_choice: на проде через AI Tunnel он ломается
- * на длинных/многополевых схемах — модель генерирует валидный tool_use, но прокси коверкает
- * JSON при трансляции в свой внутренний формат (в реальном ответе видели буквальные
- * `</parameter><parameter name="...">` внутри строковых полей — соседние поля наезжали друг
- * на друга и часть данных терялась). Проверено на той же инфраструктуре: обычный текстовый
- * ответ с просьбой вернуть JSON отрабатывает надёжно даже на длинном и сложном вводе.
- */
-export async function requestStructuredJson<T>(opts: {
-  system: string;
-  userContent: string;
-  maxTokens: number;
-}): Promise<T> {
+async function requestOnce<T>(opts: { system: string; userContent: string; maxTokens: number }): Promise<T> {
   const message = await anthropicClient.messages.create({
     model: env.anthropicModel,
     max_tokens: opts.maxTokens,
@@ -43,7 +29,12 @@ export async function requestStructuredJson<T>(opts: {
 
   const textBlock = message.content.find((b) => b.type === "text");
   if (!textBlock || textBlock.type !== "text") {
-    throw new Error("Claude не вернул текстовый ответ");
+    // Диагностика на случай повтора проблемы — без этого непонятно, был ли ответ вообще
+    // (сетевой сбой прокси) или Claude вернул что-то нетекстовое (например, только "thinking").
+    const blockTypes = message.content.map((b) => b.type).join(", ") || "пусто";
+    throw new Error(
+      `Claude не вернул текстовый ответ (stop_reason=${message.stop_reason}, блоки ответа: [${blockTypes}])`
+    );
   }
 
   const unwrapped = stripJsonFence(textBlock.text.trim());
@@ -61,5 +52,33 @@ export async function requestStructuredJson<T>(opts: {
       }
     }
     throw new Error("Claude вернул невалидный JSON: " + unwrapped.slice(0, 500));
+  }
+}
+
+/**
+ * Структурированный JSON-ответ ОБЫЧНЫМ текстом, без tools/tool_choice.
+ *
+ * Намеренно не используем форсированный tool_choice: на проде через AI Tunnel он ломается
+ * на длинных/многополевых схемах — модель генерирует валидный tool_use, но прокси коверкает
+ * JSON при трансляции в свой внутренний формат (в реальном ответе видели буквальные
+ * `</parameter><parameter name="...">` внутри строковых полей — соседние поля наезжали друг
+ * на друга и часть данных терялась). Проверено на той же инфраструктуре: обычный текстовый
+ * ответ с просьбой вернуть JSON отрабатывает надёжно даже на длинном и сложном вводе.
+ *
+ * Один автоматический повтор при сбое — через прокси вроде AI Tunnel изредка прилетает разовый
+ * пустой/нетекстовый ответ без видимой причины (не воспроизвелось повторным запросом с тем же
+ * содержимым при диагностике), так что имеет смысл не ронять всю задачу из-за одного сбойного
+ * вызова.
+ */
+export async function requestStructuredJson<T>(opts: {
+  system: string;
+  userContent: string;
+  maxTokens: number;
+}): Promise<T> {
+  try {
+    return await requestOnce<T>(opts);
+  } catch (err) {
+    console.warn("[anthropicClient] первая попытка не удалась, повтор:", err instanceof Error ? err.message : err);
+    return await requestOnce<T>(opts);
   }
 }
