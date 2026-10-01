@@ -141,6 +141,12 @@ h1{margin:0 0 10px;font-size:var(--text-xl);line-height:1.1}
 .section{padding:18px}
 .signal-list,.feed-list,.project-list,.calendar-list,.assistant-list,.list{display:grid;gap:12px}
 .signal-card,.feed-card,.project-card,.calendar-card,.assistant-card,.row-card{padding:16px;border-radius:20px;border:1px solid var(--color-divider);background:var(--color-surface-2);display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+/* длинный текст (например, имя файла) в заголовке карточки не ломал layout и не выталкивал
+   status-chip за пределы карточки — без min-width:0 flex-ребёнок по умолчанию не сжимается
+   меньше ширины своего самого длинного "неразрывного" слова */
+.signal-card>div:first-child,.feed-card>div:first-child,.project-card>div:first-child,.calendar-card>div:first-child,.row-card>div:first-child{min-width:0}
+.signal-card strong,.feed-card strong,.project-card strong,.calendar-card strong,.row-card strong,.assistant-card strong,
+.signal-card span,.feed-card span,.project-card span,.calendar-card span,.row-card span,.assistant-card span{overflow-wrap:anywhere}
 .signal-card strong,.feed-card strong,.project-card strong,.calendar-card strong,.assistant-card strong,.row-card strong{display:block;font-size:var(--text-sm)}
 .signal-card span,.feed-card span,.project-card span,.calendar-card span,.assistant-card span,.row-card span{display:block;font-size:var(--text-xs);color:var(--color-text-muted);margin-top:4px;line-height:1.5}
 .mini-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
@@ -193,6 +199,9 @@ h1{margin:0 0 10px;font-size:var(--text-xl);line-height:1.1}
 .scenario-card{display:grid;gap:10px}
 .task-list,.history-list,.kpi-list{display:grid;gap:10px}
 .task-card,.history-card,.history-item{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.task-card>div:first-child,.history-card>div:first-child,.history-item>div:first-child{min-width:0}
+.task-card strong,.history-card strong,.history-item strong,.task-card span,.history-card span,.history-item span{overflow-wrap:anywhere}
+.status-chip{flex-shrink:0}
 .task-item{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start}
 .dropzone{padding:18px;border-style:dashed;border-width:1.5px;border-color:var(--color-divider);border-radius:18px;background:linear-gradient(180deg,var(--color-surface-2),var(--color-surface))}
 .dropzone h3{margin:0 0 8px;font-size:var(--text-base)}

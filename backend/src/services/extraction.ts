@@ -2,7 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { XMLParser } from "fast-xml-parser";
 import { env } from "../lib/env";
 
-const client = new Anthropic({ apiKey: env.anthropicApiKey, baseURL: env.anthropicBaseUrl });
+// authToken (не apiKey!) — см. комментарий в services/claude.ts про Authorization: Bearer для AI Tunnel.
+const client = new Anthropic({ authToken: env.anthropicApiKey, baseURL: env.anthropicBaseUrl });
 
 /**
  * Осознанное ограничение: сервис НЕ обходит госторги/ДомРФ/Авито/Циан автоматически —

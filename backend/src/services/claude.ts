@@ -1,7 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "../lib/env";
 
-const client = new Anthropic({ apiKey: env.anthropicApiKey, baseURL: env.anthropicBaseUrl });
+// authToken (не apiKey!) — шлёт заголовок Authorization: Bearer вместо x-api-key.
+// Нужно для прокси вроде AI Tunnel, которые проверяют именно Bearer-токен; настоящий
+// api.anthropic.com принимает оба варианта одинаково, так что это безопасно и без прокси.
+const client = new Anthropic({ authToken: env.anthropicApiKey, baseURL: env.anthropicBaseUrl });
 
 const COMPANY_CONTEXT = `Мы группа компаний, объединяющих три направления деятельности:
 ГК ВМЕСТЕ — девелопмент в Иркутской области;
