@@ -178,6 +178,11 @@
       .map(function (p, i) { return '<div class="quote">' + (i + 1) + ". " + esc(p) + "</div>"; })
       .join("") || '<div class="footer-note">Пока нет тезисов.</div>';
     document.getElementById("transcriptText").textContent = job.transcriptText || "—";
+    var transcriptLen = (job.transcriptText || "").length;
+    document.getElementById("transcriptLengthNote").textContent = transcriptLen > 0 ? "(" + transcriptLen.toLocaleString("ru-RU") + " символов)" : "";
+    // Свёрнуто по умолчанию — длинная расшифровка (десятки тысяч символов) иначе растягивает
+    // всю страницу вниз. Разворачивается кликом по заголовку (нативный <details>/<summary>).
+    document.getElementById("transcriptDetails").open = false;
 
     // Блок по шаблону встречи (участники/предмет/ход/решения/планы) показываем только когда
     // Claude реально его заполнил — для диктовки эти поля пустые, и блок скрыт целиком,
