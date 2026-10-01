@@ -1,11 +1,5 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { XMLParser } from "fast-xml-parser";
-import { env } from "../lib/env";
-
-// authToken (не apiKey!) + apiKey: null — см. комментарий в services/claude.ts: без явного
-// apiKey: null конструктор SDK сам подхватывает ANTHROPIC_API_KEY из process.env и предпочитает
-// его authToken'у, так что Bearer-заголовок тихо не отправляется.
-const client = new Anthropic({ apiKey: null, authToken: env.anthropicApiKey, baseURL: env.anthropicBaseUrl });
+import { requestStructuredJson } from "../lib/anthropicClient";
 
 /**
  * Осознанное ограничение: сервис НЕ обходит госторги/ДомРФ/Авито/Циан автоматически —
@@ -126,36 +120,23 @@ export interface LandListingExtraction {
   riskNotes: string;
 }
 
-const LAND_TOOL = {
-  name: "submit_land_listing",
-  description: "Отдать структурированные параметры земельного участка/объекта из текста объявления.",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      title: { type: "string", description: "Короткое название/адрес-ориентир объекта." },
-      region: { type: "string" },
-      areaHectares: { type: ["number", "null"] },
-      budgetMillion: { type: ["number", "null"], description: "Цена/бюджет входа в млн ₽, если указана." },
-      riskNotes: { type: "string", description: "Замеченные ограничения, риски или то, что требует проверки." },
-    },
-    required: ["title", "region", "areaHectares", "budgetMillion", "riskNotes"],
-  },
-};
+const LAND_JSON_SHAPE = `{
+  "title": "короткое название/адрес-ориентир объекта",
+  "region": "регион",
+  "areaHectares": число_или_null,
+  "budgetMillion": "цена/бюджет входа в млн ₽, число или null",
+  "riskNotes": "замеченные ограничения, риски или то, что требует проверки"
+}`;
 
 export async function extractLandListing(rawText: string): Promise<LandListingExtraction> {
-  const message = await client.messages.create({
-    model: env.anthropicModel,
-    max_tokens: 600,
+  return requestStructuredJson<LandListingExtraction>({
+    maxTokens: 600,
     system:
       "Ты помогаешь девелоперу структурировать объявление о продаже земельного участка или объекта недвижимости. " +
-      "Извлеки только то, что явно есть в тексте. Если данных нет — верни null для чисел или короткую пометку в riskNotes, не выдумывай цифры.",
-    tools: [LAND_TOOL],
-    tool_choice: { type: "tool", name: "submit_land_listing" },
-    messages: [{ role: "user", content: rawText }],
+      "Извлеки только то, что явно есть в тексте. Если данных нет — верни null для чисел или короткую пометку в riskNotes, не выдумывай цифры.\n\n" +
+      `Ответь СТРОГО валидным JSON без markdown-разметки и без пояснений вокруг, ровно в этой форме:\n${LAND_JSON_SHAPE}`,
+    userContent: rawText,
   });
-  const toolUse = message.content.find((b) => b.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") throw new Error("Claude не вернул структурированные данные объекта");
-  return toolUse.input as LandListingExtraction;
 }
 
 export interface MailAnalysis {
@@ -165,50 +146,26 @@ export interface MailAnalysis {
   tasks: { title: string; owner: string | null; dueDate: string | null }[];
 }
 
-const MAIL_TOOL = {
-  name: "submit_mail_analysis",
-  description: "Отдать структурированный разбор письма: приоритет, категория и явные поручения.",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      summary: { type: "string", description: "Суть письма в 1-2 предложениях." },
-      priority: { type: "string", enum: ["высокий", "средний", "низкий"] },
-      category: { type: "string", description: "Например: финансы, стройка, юридическое, коммерческое предложение, спам-рассылка." },
-      tasks: {
-        type: "array",
-        items: {
-          type: "object",
-          properties: {
-            title: { type: "string" },
-            owner: { type: ["string", "null"] },
-            dueDate: { type: ["string", "null"], description: "ISO 8601, если срок назван явно, иначе null" },
-          },
-          required: ["title", "owner", "dueDate"],
-        },
-      },
-    },
-    required: ["summary", "priority", "category", "tasks"],
-  },
-};
+const MAIL_JSON_SHAPE = `{
+  "summary": "суть письма в 1-2 предложениях",
+  "priority": "высокий | средний | низкий",
+  "category": "например: финансы, стройка, юридическое, коммерческое предложение, спам-рассылка",
+  "tasks": [{"title": "поручение", "owner": "ответственный или null", "dueDate": "срок (ISO 8601) или null"}]
+}`;
 
 // Разборщик почты: пользователь вставляет текст письма (переслал/скопировал сам —
 // без прямого IMAP-доступа к ящику, которого у ассистента нет). Не решаем за человека,
 // какие письма читать, только структурируем то, что уже показали.
 export async function analyzeMailText(rawEmail: string): Promise<MailAnalysis> {
-  const message = await client.messages.create({
-    model: env.anthropicModel,
-    max_tokens: 700,
+  return requestStructuredJson<MailAnalysis>({
+    maxTokens: 700,
     system:
       'Ты — референт группы компаний "ВМЕСТЕ" (девелопмент, пансионаты МИРРА, розница Nomination). ' +
       "Тебе дают текст письма (тема + содержание). Определи приоритет, категорию и явно поставленные поручения. " +
-      "Не придумывай ответственных и сроки, если они не названы — используй null.",
-    tools: [MAIL_TOOL],
-    tool_choice: { type: "tool", name: "submit_mail_analysis" },
-    messages: [{ role: "user", content: rawEmail }],
+      "Не придумывай ответственных и сроки, если они не названы — используй null.\n\n" +
+      `Ответь СТРОГО валидным JSON без markdown-разметки и без пояснений вокруг, ровно в этой форме:\n${MAIL_JSON_SHAPE}`,
+    userContent: rawEmail,
   });
-  const toolUse = message.content.find((b) => b.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") throw new Error("Claude не вернул структурированный разбор письма");
-  return toolUse.input as MailAnalysis;
 }
 
 export interface SupportProgramExtraction {
@@ -219,34 +176,21 @@ export interface SupportProgramExtraction {
   potential: string;
 }
 
-const SUPPORT_TOOL = {
-  name: "submit_support_program",
-  description: "Отдать структурированные параметры меры поддержки/льготы из текста документа или новости.",
-  input_schema: {
-    type: "object" as const,
-    properties: {
-      title: { type: "string" },
-      type: { type: "string", description: "Кредитование / Субсидия / Налоговая льгота / Лизинг / иное." },
-      region: { type: "string" },
-      businessLine: { type: "string", description: "Девелопмент / Пансионаты / Розница — к какому направлению ГК относится." },
-      potential: { type: "string", description: "Кратко: в чём практическая польза для группы компаний." },
-    },
-    required: ["title", "type", "region", "businessLine", "potential"],
-  },
-};
+const SUPPORT_JSON_SHAPE = `{
+  "title": "название меры поддержки",
+  "type": "Кредитование / Субсидия / Налоговая льгота / Лизинг / иное",
+  "region": "регион",
+  "businessLine": "Девелопмент / Пансионаты / Розница — к какому направлению ГК относится",
+  "potential": "кратко: в чём практическая польза для группы компаний"
+}`;
 
 export async function extractSupportProgram(rawText: string): Promise<SupportProgramExtraction> {
-  const message = await client.messages.create({
-    model: env.anthropicModel,
-    max_tokens: 500,
+  return requestStructuredJson<SupportProgramExtraction>({
+    maxTokens: 500,
     system:
       'Ты помогаешь структурировать найденную меру поддержки бизнеса (льгота, субсидия, кредитная программа) для группы компаний "ВМЕСТЕ" ' +
-      "(девелопмент, пансионаты для пожилых МИРРА, розница ювелирных изделий Nomination). Извлеки только то, что явно есть в тексте, не придумывай условия программы.",
-    tools: [SUPPORT_TOOL],
-    tool_choice: { type: "tool", name: "submit_support_program" },
-    messages: [{ role: "user", content: rawText }],
+      "(девелопмент, пансионаты для пожилых МИРРА, розница ювелирных изделий Nomination). Извлеки только то, что явно есть в тексте, не придумывай условия программы.\n\n" +
+      `Ответь СТРОГО валидным JSON без markdown-разметки и без пояснений вокруг, ровно в этой форме:\n${SUPPORT_JSON_SHAPE}`,
+    userContent: rawText,
   });
-  const toolUse = message.content.find((b) => b.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") throw new Error("Claude не вернул структурированные данные программы");
-  return toolUse.input as SupportProgramExtraction;
 }
