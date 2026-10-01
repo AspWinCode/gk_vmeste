@@ -3,9 +3,22 @@ import os from "os";
 import path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
+import { Agent, fetch as undiciFetch, FormData as UndiciFormData } from "undici";
 import { env } from "../lib/env";
 
 const execFileAsync = promisify(execFile);
+
+// Глобальный fetch в Node использует СВОЮ встроенную версию undici — Agent из npm-пакета
+// undici (другая версия) с ним несовместим ("invalid onRequestStart method"). Поэтому для
+// STT-запросов берём fetch из самого пакета undici, а не глобальный — тогда Agent и fetch
+// гарантированно одной версии.
+//
+// Нужен увеличенный таймаут, потому что дефолтные 300с на ожидание заголовков ответа
+// не всегда хватает: диаризация на AI Tunnel на практике ощутимо медленнее реального времени
+// и с заметным разбросом (замерено: 75с на 3 минуты речи, но видели клиентский обрыв и на
+// куске в 2.5 минуты). Отдельный Agent — только для STT-запросов, на остальные (Claude и т.д.,
+// которые заметно быстрее) не влияет.
+const sttDispatcher = new Agent({ headersTimeout: 600_000, bodyTimeout: 600_000 });
 
 export interface SpeakerSegment {
   speaker: string;
@@ -86,7 +99,13 @@ const DIARIZE_MODEL = "gpt-4o-transcribe-diarize";
 // в 25МБ размером и ПОКАЗАЛАСЬ бы коду "не требующей нарезки" по старой логике (только по
 // размеру) — поэтому для этой модели длительность проверяется отдельно через ffprobe.
 const DIARIZE_MAX_DURATION_SECONDS = 1400;
-const DIARIZE_SAFE_DURATION_SECONDS = 1200; // запас от жёсткого лимита на неточность нарезки
+
+// Диаризация у AI Tunnel обрабатывается МЕДЛЕННЕЕ реального времени — измерено напрямую:
+// 3 минуты реальной речи обрабатывались 75 секунд. Кусок на 20 минут (наш прежний запас)
+// обрабатывался бы ~10 минут и гарантированно ловит 524 (таймаут на их прокси/Cloudflare,
+// не наш собственный). Поэтому для diarize-модели куски режутся гораздо мельче, чем позволяет
+// жёсткий лимит в 1400 сек — не из-за лимита длительности, а из-за реального времени обработки.
+const DIARIZE_SAFE_DURATION_SECONDS = 150;
 
 // OpenAI Whisper-совместимый провайдер (или прокси типа AI Tunnel) — платный по минутам API.
 // Диаризация по спикерам есть только у DIARIZE_MODEL; на остальных моделях все сегменты
@@ -199,13 +218,25 @@ class OpenAiWhisperProvider implements SpeechToTextProvider {
       .map((f) => path.join(tmpDir, f));
   }
 
+  private fetchTranscription(form: UndiciFormData): Promise<Response> {
+    return undiciFetch(`${env.sttBaseUrl}/audio/transcriptions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${env.sttApiKey}` },
+      body: form,
+      dispatcher: sttDispatcher,
+    }) as unknown as Promise<Response>;
+  }
+
   private async transcribeSingleFile(
     filePath: string,
     language: string
   ): Promise<{ text: string; segments: (OpenAiVerboseSegment & { speaker: string })[] }> {
     const isDiarizing = env.sttModel === DIARIZE_MODEL;
     const fileBuffer = fs.readFileSync(filePath);
-    const form = new FormData();
+    // Конкретно FormData/Blob из пакета undici, не глобальные — fetch тоже из undici (см.
+    // комментарий у sttDispatcher) и не распознаёт глобальный FormData как "свой", из-за чего
+    // тело запроса улетало как голый текст вместо multipart/form-data (AI Tunnel отвечал 400).
+    const form = new UndiciFormData();
     form.append("file", new Blob([fileBuffer], { type: "audio/mpeg" }), "audio.mp3");
     form.append("model", env.sttModel);
     form.append("language", language);
@@ -215,11 +246,24 @@ class OpenAiWhisperProvider implements SpeechToTextProvider {
     // required for diarization models".
     if (isDiarizing) form.append("chunking_strategy", "auto");
 
-    const res = await fetch(`${env.sttBaseUrl}/audio/transcriptions`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${env.sttApiKey}` },
-      body: form,
-    });
+    // При мелкой нарезке на один файл выходит много последовательных запросов (например,
+    // ~12 для получасовой записи при чанке в 150с) — с ростом их числа растёт и шанс поймать
+    // случайный 524/таймаут на стороне AI Tunnel хотя бы один раз (замерено: разброс времени
+    // обработки заметный даже на одинаковых по длине кусках). До 2 повторов с паузой дешевле,
+    // чем ронять всю задачу и пересчитывать её целиком заново.
+    let res: Response | undefined;
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        res = await this.fetchTranscription(form);
+        if (res.ok || res.status < 500) break;
+        lastErr = new Error(`HTTP ${res.status}`);
+      } catch (err) {
+        lastErr = err;
+      }
+      if (attempt < 2) await new Promise((r) => setTimeout(r, 3000));
+    }
+    if (!res) throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
