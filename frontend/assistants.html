@@ -31,6 +31,10 @@
         <a class="nav-item" href="finance-monitor.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Финмониторинг</span></div></a>
         <a class="nav-item" href="mail.html"><div class="nav-left"><div class="dot" style="background:#002D72"></div><span class="text">Разборщик почты</span></div></a>
       </div>
+      <div class="nav-group">
+        <div class="nav-label">Аккаунт</div>
+        <a class="nav-item" href="settings.html"><div class="nav-left"><div class="dot" style="background:#5B5F97"></div><span class="text">Настройки</span></div></a>
+      </div>
       <div class="mini-card">
         <h3>Как читать каталог</h3>
         <p>Статус «активен» — модуль работает и подключён к данным. «Настройка» — нужны внешние доступы (ключи API, интеграции). Кликните карточку активного модуля, чтобы открыть его.</p>
@@ -54,7 +58,7 @@
             <p class="lead">Каталог сгруппирован по направлениям, чтобы команда быстро понимала, какой ассистент нужен для коммуникаций, контроля сроков, недвижимости, финансовой модели или мониторинга мер поддержки.</p>
             <div class="hero-actions">
               <button class="btn btn-primary" id="toggleAddAssistantBtn">Добавить ассистента</button>
-              <button class="btn btn-secondary" id="toggleRolesBtn">Настроить роли</button>
+              <a class="btn btn-secondary" href="settings.html">Настроить роли</a>
             </div>
           </div>
           <div class="summary">
@@ -81,16 +85,6 @@
             <button class="btn btn-primary" type="submit" style="grid-column:1/-1;justify-content:center">Добавить в каталог</button>
             <div id="addAssistantError" class="footer-note" style="color:#9E3D3D;display:none;grid-column:1/-1"></div>
           </form>
-        </section>
-
-        <section class="panel section" id="rolesPanel" style="display:none">
-          <div class="section-head"><div><h2>Роли пользователей</h2><p>Кто есть в системе и с какой ролью</p></div></div>
-          <div class="table-wrap">
-            <table class="table">
-              <thead><tr><th>Пользователь</th><th>Почта</th><th>Роль</th></tr></thead>
-              <tbody id="usersTableBody"></tbody>
-            </table>
-          </div>
         </section>
 
         <section class="catalog">

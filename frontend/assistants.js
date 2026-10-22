@@ -164,37 +164,5 @@
     }
   });
 
-  var ROLE_LABEL = { EXECUTIVE: "Руководитель", ANALYST: "Аналитик", PROJECT_OFFICE: "Офис проекта", OPERATOR: "Оператор", ADMIN: "Администратор" };
-  var ROLES = Object.keys(ROLE_LABEL);
-
-  document.getElementById("toggleRolesBtn").addEventListener("click", function () {
-    var panel = document.getElementById("rolesPanel");
-    var willShow = panel.style.display === "none";
-    panel.style.display = willShow ? "block" : "none";
-    if (willShow) {
-      loadUsers();
-      panel.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  });
-
-  async function loadUsers() {
-    var res = await Auth.apiFetch("/users");
-    if (!res.ok) return;
-    var users = await res.json();
-    document.getElementById("usersTableBody").innerHTML = users
-      .map(function (u) {
-        var options = ROLES.map(function (r) { return '<option value="' + r + '"' + (r === u.role ? " selected" : "") + ">" + ROLE_LABEL[r] + "</option>"; }).join("");
-        return (
-          "<tr><td><strong>" + esc(u.name) + "</strong></td><td>" + esc(u.email) + '</td><td><select class="select" data-user-id="' + u.id + '" style="max-width:220px">' + options + "</select></td></tr>"
-        );
-      })
-      .join("");
-    Array.prototype.forEach.call(document.querySelectorAll("[data-user-id]"), function (select) {
-      select.addEventListener("change", async function () {
-        await Auth.apiFetch("/users/" + select.getAttribute("data-user-id") + "/role", { method: "PATCH", body: { role: select.value } });
-      });
-    });
-  }
-
   loadAssistants();
 })();

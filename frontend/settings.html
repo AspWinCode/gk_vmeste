@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Настройки — Вместе AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 17V7h3.2l3.8 5.1L15.8 7H19v10h-2.5v-5.9L12 16.9 7.5 11.2V17H5Z" fill="white"/></svg></div>
+        <div><div class="brand-title">ВМЕСТЕ AI</div><div class="brand-sub">единое пространство ассистентов</div></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Основное</div>
+        <a class="nav-item" href="index.html"><div class="nav-left"><div class="dot"></div><span class="text">Рабочий стол</span></div><span class="count">12</span></a>
+        <a class="nav-item" href="assistants.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Каталог ассистентов</span></div><span class="count">9</span></a>
+        <a class="nav-item" href="finance.html"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Финансовый аналитик</span></div></a>
+        <a class="nav-item" href="transcriber.html"><div class="nav-left"><div class="dot" style="background:#F2CA00"></div><span class="text">Транскрибатор-референт</span></div></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Контроль и мониторинг</div>
+        <a class="nav-item" href="ksg.html"><div class="nav-left"><div class="dot" style="background:#A13F3F"></div><span class="text">Контроль КСГ</span></div></a>
+        <a class="nav-item" href="land.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Земля и объекты</span></div></a>
+        <a class="nav-item" href="support.html"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Меры поддержки</span></div></a>
+        <a class="nav-item" href="finance-monitor.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Финмониторинг</span></div></a>
+        <a class="nav-item" href="mail.html"><div class="nav-left"><div class="dot" style="background:#002D72"></div><span class="text">Разборщик почты</span></div></a>
+      </div>
+      <div class="nav-group">
+        <div class="nav-label">Аккаунт</div>
+        <a class="nav-item active" href="settings.html"><div class="nav-left"><div class="dot" style="background:#5B5F97"></div><span class="text">Настройки</span></div></a>
+      </div>
+      <div class="mini-card">
+        <h3>О разделе</h3>
+        <p>Профиль, тема оформления и управление доступом пользователей собраны в одном месте.</p>
+      </div>
+    </aside>
+
+    <div class="content">
+      <header class="topbar">
+        <div class="search"><span>⌘K</span><input type="text" id="globalSearchInput" placeholder="Поиск по настройкам и пользователям" aria-label="Поиск по настройкам" /></div>
+        <div class="top-actions">
+          <button class="icon-btn" data-theme-toggle aria-label="Переключить тему">◐</button>
+          <div class="avatar">ГК Вместе</div>
+        </div>
+      </header>
+
+      <main class="main">
+        <section class="panel hero">
+          <div>
+            <div class="eyebrow">Управление аккаунтом</div>
+            <h1>Настройки</h1>
+            <p class="lead">Профиль текущего пользователя, тема оформления интерфейса и роли команды — всё в одном разделе, отдельно от рабочих экранов ассистентов.</p>
+          </div>
+        </section>
+        <div id="apiWarning" class="footer-note" style="display:none;color:#9E3D3D">Не удаётся подключиться к backend по адресу <code id="apiWarningUrl"></code>. Проверьте, что API запущен (см. backend/README.md).</div>
+
+        <section class="panel section">
+          <div class="section-head">
+            <div><h2>Профиль</h2><p>Данные текущего пользователя сессии</p></div>
+          </div>
+          <div class="form-grid">
+            <div class="field"><label>Имя</label><div id="profileName">—</div></div>
+            <div class="field"><label>Почта</label><div id="profileEmail">—</div></div>
+            <div class="field"><label>Роль</label><div id="profileRole">—</div></div>
+          </div>
+          <div class="footer-note" style="margin-top:14px">Смена имени и пароля из интерфейса пока не поддерживается — обратитесь к администратору.</div>
+          <div class="hero-actions" style="margin-top:14px"><button class="btn btn-secondary" id="logoutBtn">Выйти из системы</button></div>
+        </section>
+
+        <section class="panel section">
+          <div class="section-head">
+            <div><h2>Внешний вид</h2><p>Тема интерфейса сохраняется в этом браузере</p></div>
+          </div>
+          <div class="filters">
+            <button class="filter" data-theme-option="light">◐ Светлая</button>
+            <button class="filter" data-theme-option="dark">● Тёмная</button>
+          </div>
+        </section>
+
+        <section class="panel section">
+          <div class="section-head">
+            <div><h2>Пользователи и роли</h2><p>Кто есть в системе и с какой ролью</p></div>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>Пользователь</th><th>Почта</th><th>Роль</th></tr></thead>
+              <tbody id="usersTableBody"><tr><td colspan="3" class="footer-note">Загрузка...</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+  <script src="config.js"></script>
+  <script src="auth.js"></script>
+  <script>Auth.requireAuth();</script>
+  <script src="app.js"></script>
+  <script src="settings.js"></script>
+</body>
+</html>
