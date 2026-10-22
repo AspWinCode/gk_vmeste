@@ -18,22 +18,22 @@
       </div>
       <div class="nav-group">
         <div class="nav-label">Основное</div>
-        <a class="nav-item" href="index.html"><div class="nav-left"><div class="dot"></div><span class="text">Рабочий стол</span></div><span class="count">12</span></a>
-        <a class="nav-item" href="assistants.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Каталог ассистентов</span></div><span class="count">9</span></a>
-        <a class="nav-item" href="finance.html"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Финансовый аналитик</span></div></a>
-        <a class="nav-item" href="transcriber.html"><div class="nav-left"><div class="dot" style="background:#F2CA00"></div><span class="text">Транскрибатор-референт</span></div></a>
+        <a class="nav-item" href="index.html" data-nav-id="index"><div class="nav-left"><div class="dot"></div><span class="text">Рабочий стол</span></div><span class="count">12</span></a>
+        <a class="nav-item" href="assistants.html" data-nav-id="assistants"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Каталог ассистентов</span></div><span class="count">9</span></a>
+        <a class="nav-item" href="finance.html" data-nav-id="finance"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Финансовый аналитик</span></div></a>
+        <a class="nav-item" href="transcriber.html" data-nav-id="transcriber"><div class="nav-left"><div class="dot" style="background:#F2CA00"></div><span class="text">Транскрибатор-референт</span></div></a>
       </div>
       <div class="nav-group">
         <div class="nav-label">Контроль и мониторинг</div>
-        <a class="nav-item" href="ksg.html"><div class="nav-left"><div class="dot" style="background:#A13F3F"></div><span class="text">Контроль КСГ</span></div></a>
-        <a class="nav-item" href="land.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Земля и объекты</span></div></a>
-        <a class="nav-item" href="support.html"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Меры поддержки</span></div></a>
-        <a class="nav-item active" href="finance-monitor.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Финмониторинг</span></div></a>
-        <a class="nav-item" href="mail.html"><div class="nav-left"><div class="dot" style="background:#002D72"></div><span class="text">Разборщик почты</span></div></a>
+        <a class="nav-item" href="ksg.html" data-nav-id="ksg"><div class="nav-left"><div class="dot" style="background:#A13F3F"></div><span class="text">Контроль КСГ</span></div></a>
+        <a class="nav-item" href="land.html" data-nav-id="land"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Земля и объекты</span></div></a>
+        <a class="nav-item" href="support.html" data-nav-id="support"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Меры поддержки</span></div></a>
+        <a class="nav-item active" href="finance-monitor.html" data-nav-id="finance-monitor"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Финмониторинг</span></div></a>
+        <a class="nav-item" href="mail.html" data-nav-id="mail"><div class="nav-left"><div class="dot" style="background:#002D72"></div><span class="text">Разборщик почты</span></div></a>
       </div>
       <div class="nav-group">
         <div class="nav-label">Аккаунт</div>
-        <a class="nav-item" href="settings.html"><div class="nav-left"><div class="dot" style="background:#5B5F97"></div><span class="text">Настройки</span></div></a>
+        <a class="nav-item" href="settings.html" data-nav-id="settings"><div class="nav-left"><div class="dot" style="background:#5B5F97"></div><span class="text">Настройки</span></div></a>
       </div>
       <div class="mini-card">
         <h3>Быстрый запуск</h3>
@@ -124,6 +124,7 @@
     </div>
   </div>
   <script src="config.js"></script>
+  <script src="prefs.js"></script>
   <script src="auth.js"></script>
   <script>Auth.requireAuth();</script>
   <script src="app.js"></script>

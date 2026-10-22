@@ -64,6 +64,54 @@
     }
   }
 
+  function renderNavToggles() {
+    var container = document.getElementById("navTogglesList");
+    if (!container || !window.Prefs) return;
+    var hidden = Prefs.getHiddenNavIds();
+    container.innerHTML = Prefs.NAV_ITEMS.map(function (item) {
+      return (
+        '<div class="toggle-row"><label for="nav-' + item.id + '">' + esc(item.label) + "</label>" +
+        '<input type="checkbox" id="nav-' + item.id + '" data-nav-toggle="' + item.id + '"' +
+        (hidden.indexOf(item.id) === -1 ? " checked" : "") + " /></div>"
+      );
+    }).join("");
+    Array.prototype.forEach.call(container.querySelectorAll("[data-nav-toggle]"), function (cb) {
+      cb.addEventListener("change", function () {
+        var id = cb.getAttribute("data-nav-toggle");
+        var current = Prefs.getHiddenNavIds();
+        var pos = current.indexOf(id);
+        if (cb.checked && pos !== -1) current.splice(pos, 1);
+        if (!cb.checked && pos === -1) current.push(id);
+        Prefs.setHiddenNavIds(current);
+      });
+    });
+  }
+
+  function renderWidgetToggles() {
+    var container = document.getElementById("widgetTogglesList");
+    if (!container || !window.Prefs) return;
+    var prefs = Prefs.getDashboardPrefs();
+    container.innerHTML = Prefs.DASHBOARD_WIDGETS.map(function (w) {
+      return (
+        '<div class="toggle-row"><label for="widget-' + w.id + '">' + esc(w.label) + "</label>" +
+        '<input type="checkbox" id="widget-' + w.id + '" data-widget-toggle="' + w.id + '"' +
+        (prefs.hidden.indexOf(w.id) === -1 ? " checked" : "") + " /></div>"
+      );
+    }).join("");
+    Array.prototype.forEach.call(container.querySelectorAll("[data-widget-toggle]"), function (cb) {
+      cb.addEventListener("change", function () {
+        var id = cb.getAttribute("data-widget-toggle");
+        var current = Prefs.getDashboardPrefs();
+        var pos = current.hidden.indexOf(id);
+        if (cb.checked && pos !== -1) current.hidden.splice(pos, 1);
+        if (!cb.checked && pos === -1) current.hidden.push(id);
+        Prefs.setDashboardPrefs(current);
+      });
+    });
+  }
+
   renderProfile();
   loadUsers();
+  renderNavToggles();
+  renderWidgetToggles();
 })();

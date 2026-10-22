@@ -136,9 +136,29 @@ h1{margin:0 0 10px;font-size:var(--text-xl);line-height:1.1}
 .kpi-card{padding:16px;border-radius:20px;border:1px solid var(--color-divider);background:var(--color-surface-2)}
 .kpi-card strong{display:block;font-size:1.55rem;line-height:1;font-variant-numeric:tabular-nums}
 .kpi-card span{display:block;font-size:var(--text-xs);color:var(--color-text-muted);margin-top:8px}
-.dashboard,.grid-2{display:grid;grid-template-columns:1.2fr .8fr;gap:20px;align-items:start}
-.left-stack,.right-stack{display:grid;gap:20px}
+.grid-2{display:grid;grid-template-columns:1.2fr .8fr;gap:20px;align-items:start}
 .section{padding:18px}
+
+/* Рабочий стол: виджеты — плотная сетка с автоподбором числа колонок под ширину
+   экрана (auto-fill) и dense-упаковкой, чтобы при скрытии/разной ширине виджетов
+   не оставалось пустых "дыр" — следующий виджет сам поднимается на освободившееся
+   место. Порядок и состав настраиваются в "Настройки" + перетаскиванием на месте. */
+.dashboard-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));grid-auto-flow:dense;gap:20px;align-items:start}
+.widget{min-width:0}
+.widget-wide{grid-column:span 2}
+@media (max-width: 860px){.widget-wide{grid-column:span 1}}
+.widget.drag-over{outline:2px dashed var(--color-primary);outline-offset:4px}
+.widget.dragging{opacity:.45}
+.widget-controls{display:flex;align-items:center;gap:4px;flex:0 0 auto}
+.widget-controls .icon-btn{min-height:32px;min-width:32px;width:32px;height:32px;padding:0;font-size:14px;border-radius:10px}
+.widget-drag-handle{cursor:grab;touch-action:none}
+.widget-drag-handle:active{cursor:grabbing}
+.widget.widget-hidden{display:none}
+
+/* Настройки: строки-переключатели для пунктов меню и виджетов */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--color-divider);background:var(--color-surface-2)}
+.toggle-row label{display:flex;align-items:center;gap:10px;font-size:var(--text-sm);font-weight:600;cursor:pointer}
+.toggle-row input[type="checkbox"]{width:18px;height:18px;accent-color:var(--color-primary);cursor:pointer}
 .signal-list,.feed-list,.project-list,.calendar-list,.assistant-list,.list{display:grid;gap:12px}
 .signal-card,.feed-card,.project-card,.calendar-card,.assistant-card,.row-card{padding:16px;border-radius:20px;border:1px solid var(--color-divider);background:var(--color-surface-2);display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
 /* длинный текст (например, имя файла) в заголовке карточки не ломал layout и не выталкивал
@@ -224,7 +244,7 @@ summary strong{display:inline}
 .timeline-item strong{display:block;font-size:var(--text-sm)}
 .timeline-item span{display:block;margin-top:4px;font-size:var(--text-xs);color:var(--color-text-muted)}
 
-@media (max-width: 1320px){.workspace,.dashboard,.hero,.catalog,.grid-2{grid-template-columns:1fr}.kpi-grid,.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.search{min-width:unset;width:100%}}
+@media (max-width: 1320px){.workspace,.hero,.catalog,.grid-2{grid-template-columns:1fr}.kpi-grid,.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.search{min-width:unset;width:100%}}
 
 /* планшет и мобильный: боковая панель становится выезжающим меню вместо колонки —
    иначе на узких экранах навигация пропадала совсем (см. .mobile-nav-toggle в auth.js) */

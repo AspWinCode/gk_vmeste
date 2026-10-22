@@ -18,22 +18,22 @@
       </div>
       <div class="nav-group">
         <div class="nav-label">Основное</div>
-        <a class="nav-item active" href="index.html"><div class="nav-left"><div class="dot"></div><span class="text">Рабочий стол</span></div><span class="count">12</span></a>
-        <a class="nav-item" href="assistants.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Каталог ассистентов</span></div><span class="count">9</span></a>
-        <a class="nav-item" href="finance.html"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Финансовый аналитик</span></div></a>
-        <a class="nav-item" href="transcriber.html"><div class="nav-left"><div class="dot" style="background:#F2CA00"></div><span class="text">Транскрибатор-референт</span></div></a>
+        <a class="nav-item active" href="index.html" data-nav-id="index"><div class="nav-left"><div class="dot"></div><span class="text">Рабочий стол</span></div><span class="count">12</span></a>
+        <a class="nav-item" href="assistants.html" data-nav-id="assistants"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Каталог ассистентов</span></div><span class="count">9</span></a>
+        <a class="nav-item" href="finance.html" data-nav-id="finance"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Финансовый аналитик</span></div></a>
+        <a class="nav-item" href="transcriber.html" data-nav-id="transcriber"><div class="nav-left"><div class="dot" style="background:#F2CA00"></div><span class="text">Транскрибатор-референт</span></div></a>
       </div>
       <div class="nav-group">
         <div class="nav-label">Контроль и мониторинг</div>
-        <a class="nav-item" href="ksg.html"><div class="nav-left"><div class="dot" style="background:#A13F3F"></div><span class="text">Контроль КСГ</span></div></a>
-        <a class="nav-item" href="land.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Земля и объекты</span></div></a>
-        <a class="nav-item" href="support.html"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Меры поддержки</span></div></a>
-        <a class="nav-item" href="finance-monitor.html"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Финмониторинг</span></div></a>
-        <a class="nav-item" href="mail.html"><div class="nav-left"><div class="dot" style="background:#002D72"></div><span class="text">Разборщик почты</span></div></a>
+        <a class="nav-item" href="ksg.html" data-nav-id="ksg"><div class="nav-left"><div class="dot" style="background:#A13F3F"></div><span class="text">Контроль КСГ</span></div></a>
+        <a class="nav-item" href="land.html" data-nav-id="land"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Земля и объекты</span></div></a>
+        <a class="nav-item" href="support.html" data-nav-id="support"><div class="nav-left"><div class="dot" style="background:#00ACA0"></div><span class="text">Меры поддержки</span></div></a>
+        <a class="nav-item" href="finance-monitor.html" data-nav-id="finance-monitor"><div class="nav-left"><div class="dot" style="background:#003DA5"></div><span class="text">Финмониторинг</span></div></a>
+        <a class="nav-item" href="mail.html" data-nav-id="mail"><div class="nav-left"><div class="dot" style="background:#002D72"></div><span class="text">Разборщик почты</span></div></a>
       </div>
       <div class="nav-group">
         <div class="nav-label">Аккаунт</div>
-        <a class="nav-item" href="settings.html"><div class="nav-left"><div class="dot" style="background:#5B5F97"></div><span class="text">Настройки</span></div></a>
+        <a class="nav-item" href="settings.html" data-nav-id="settings"><div class="nav-left"><div class="dot" style="background:#5B5F97"></div><span class="text">Настройки</span></div></a>
       </div>
       <div class="mini-card">
         <h3>Быстрый запуск</h3>
@@ -85,68 +85,112 @@
           </div>
         </section>
 
-        <section class="kpi-grid">
-          <div class="panel kpi-card"><strong id="kpiActiveTasks">—</strong><span>активных задач по проектам</span></div>
-          <div class="panel kpi-card"><strong id="kpiKsgDelays">—</strong><span>отставания по КСГ</span></div>
-          <div class="panel kpi-card"><strong id="kpiTotalNpv">—</strong><span>совокупный NPV по последним моделям</span></div>
-          <div class="panel kpi-card"><strong id="kpiFreshness">—</strong><span>этапов КСГ обновлены за 7 дней</span></div>
-        </section>
+        <section class="dashboard-grid" id="dashboardGrid">
+          <section class="panel section widget widget-wide" data-widget-id="kpi" draggable="true">
+            <div class="section-head">
+              <div><h2>Ключевые показатели</h2><p>Срез по проектам и КСГ на сегодня</p></div>
+              <div class="widget-controls">
+                <button type="button" class="icon-btn widget-drag-handle" title="Перетащить" aria-label="Перетащить виджет">⠿</button>
+                <button type="button" class="icon-btn widget-wide-toggle" title="Изменить ширину" aria-label="Изменить ширину виджета">⤢</button>
+                <button type="button" class="icon-btn widget-hide-btn" title="Скрыть виджет" aria-label="Скрыть виджет">✕</button>
+              </div>
+            </div>
+            <div class="kpi-grid">
+              <div class="panel kpi-card"><strong id="kpiActiveTasks">—</strong><span>активных задач по проектам</span></div>
+              <div class="panel kpi-card"><strong id="kpiKsgDelays">—</strong><span>отставания по КСГ</span></div>
+              <div class="panel kpi-card"><strong id="kpiTotalNpv">—</strong><span>совокупный NPV по последним моделям</span></div>
+              <div class="panel kpi-card"><strong id="kpiFreshness">—</strong><span>этапов КСГ обновлены за 7 дней</span></div>
+            </div>
+          </section>
 
-        <section class="dashboard">
-          <div class="left-stack">
-            <section class="panel section">
-              <div class="section-head">
-                <div><h2>Критические сигналы</h2><p>То, что требует внимания руководителя сегодня</p></div>
+          <section class="panel section widget widget-wide" data-widget-id="signals" draggable="true">
+            <div class="section-head">
+              <div><h2>Критические сигналы</h2><p>То, что требует внимания руководителя сегодня</p></div>
+              <div class="widget-controls">
                 <button class="btn btn-secondary" id="showAllSignalsBtn">Все сигналы</button>
+                <button type="button" class="icon-btn widget-drag-handle" title="Перетащить" aria-label="Перетащить виджет">⠿</button>
+                <button type="button" class="icon-btn widget-wide-toggle" title="Изменить ширину" aria-label="Изменить ширину виджета">⤢</button>
+                <button type="button" class="icon-btn widget-hide-btn" title="Скрыть виджет" aria-label="Скрыть виджет">✕</button>
               </div>
-              <div class="signal-list" id="signalsList"><div class="footer-note">Загрузка...</div></div>
-            </section>
+            </div>
+            <div class="signal-list" id="signalsList"><div class="footer-note">Загрузка...</div></div>
+          </section>
 
-            <section class="panel section">
-              <div class="section-head">
-                <div><h2>Проекты под контролем</h2><p>Короткая сводка по ключевым площадкам и направлениям</p></div>
+          <section class="panel section widget" data-widget-id="tasks" draggable="true">
+            <div class="section-head">
+              <div><h2>Поручения дня</h2><p>Что нужно отдать в работу прямо сейчас</p></div>
+              <div class="widget-controls">
+                <button type="button" class="icon-btn widget-drag-handle" title="Перетащить" aria-label="Перетащить виджет">⠿</button>
+                <button type="button" class="icon-btn widget-wide-toggle" title="Изменить ширину" aria-label="Изменить ширину виджета">⤢</button>
+                <button type="button" class="icon-btn widget-hide-btn" title="Скрыть виджет" aria-label="Скрыть виджет">✕</button>
+              </div>
+            </div>
+            <div class="calendar-list" id="taskList"><div class="footer-note">Загрузка...</div></div>
+          </section>
+
+          <section class="panel section widget widget-wide" data-widget-id="projects" draggable="true">
+            <div class="section-head">
+              <div><h2>Проекты под контролем</h2><p>Короткая сводка по ключевым площадкам и направлениям</p></div>
+              <div class="widget-controls">
                 <a class="btn btn-secondary" href="finance.html">Все проекты</a>
+                <button type="button" class="icon-btn widget-drag-handle" title="Перетащить" aria-label="Перетащить виджет">⠿</button>
+                <button type="button" class="icon-btn widget-wide-toggle" title="Изменить ширину" aria-label="Изменить ширину виджета">⤢</button>
+                <button type="button" class="icon-btn widget-hide-btn" title="Скрыть виджет" aria-label="Скрыть виджет">✕</button>
               </div>
-              <div class="project-list" id="projectList"><div class="footer-note">Загрузка...</div></div>
-            </section>
+            </div>
+            <div class="project-list" id="projectList"><div class="footer-note">Загрузка...</div></div>
+          </section>
 
-            <section class="panel section">
-              <div class="section-head">
-                <div><h2>Лента действий ассистентов</h2><p>Последние изменения и результаты по модулям</p></div>
+          <section class="panel section widget" data-widget-id="focus" draggable="true">
+            <div class="section-head">
+              <div><h2>Ассистенты в фокусе</h2><p>Модули, которые сформировали сигналы</p></div>
+              <div class="widget-controls">
+                <button type="button" class="icon-btn widget-drag-handle" title="Перетащить" aria-label="Перетащить виджет">⠿</button>
+                <button type="button" class="icon-btn widget-wide-toggle" title="Изменить ширину" aria-label="Изменить ширину виджета">⤢</button>
+                <button type="button" class="icon-btn widget-hide-btn" title="Скрыть виджет" aria-label="Скрыть виджет">✕</button>
               </div>
-              <div class="feed-list" id="feedList"><div class="footer-note">Загрузка...</div></div>
-            </section>
-          </div>
+            </div>
+            <div class="assistant-list">
+              <a class="assistant-card" href="finance.html"><div class="icon">Ф</div><div><strong>Финансовый аналитик</strong><span id="focusFinance">—</span></div></a>
+              <a class="assistant-card" href="ksg.html"><div class="icon" style="background:#003DA5">К</div><div><strong>Контроль КСГ</strong><span id="focusKsg">—</span></div></a>
+              <a class="assistant-card" href="transcriber.html"><div class="icon" style="background:#F2CA00;color:#002D72">Т</div><div><strong>Транскрибатор-референт</strong><span id="focusTranscriber">—</span></div></a>
+            </div>
+          </section>
 
-          <div class="right-stack">
-            <section class="panel section">
-              <div class="section-head"><div><h2>Поручения дня</h2><p>Что нужно отдать в работу прямо сейчас</p></div></div>
-              <div class="calendar-list" id="taskList"><div class="footer-note">Загрузка...</div></div>
-            </section>
-
-            <section class="panel section">
-              <div class="section-head"><div><h2>Ассистенты в фокусе</h2><p>Модули, которые сформировали сигналы</p></div></div>
-              <div class="assistant-list">
-                <a class="assistant-card" href="finance.html"><div class="icon">Ф</div><div><strong>Финансовый аналитик</strong><span id="focusFinance">—</span></div></a>
-                <a class="assistant-card" href="ksg.html"><div class="icon" style="background:#003DA5">К</div><div><strong>Контроль КСГ</strong><span id="focusKsg">—</span></div></a>
-                <a class="assistant-card" href="transcriber.html"><div class="icon" style="background:#F2CA00;color:#002D72">Т</div><div><strong>Транскрибатор-референт</strong><span id="focusTranscriber">—</span></div></a>
+          <section class="panel section widget widget-wide" data-widget-id="feed" draggable="true">
+            <div class="section-head">
+              <div><h2>Лента действий ассистентов</h2><p>Последние изменения и результаты по модулям</p></div>
+              <div class="widget-controls">
+                <button type="button" class="icon-btn widget-drag-handle" title="Перетащить" aria-label="Перетащить виджет">⠿</button>
+                <button type="button" class="icon-btn widget-wide-toggle" title="Изменить ширину" aria-label="Изменить ширину виджета">⤢</button>
+                <button type="button" class="icon-btn widget-hide-btn" title="Скрыть виджет" aria-label="Скрыть виджет">✕</button>
               </div>
-            </section>
+            </div>
+            <div class="feed-list" id="feedList"><div class="footer-note">Загрузка...</div></div>
+          </section>
 
-            <section class="panel section">
-              <div class="section-head"><div><h2>Дальше по срокам</h2><p>Поручения без пометки «сегодня»</p></div></div>
-              <div class="calendar-list" id="upcomingList"><div class="footer-note">Загрузка...</div></div>
-              <div class="footer-note" style="margin-top:14px">Экран руководителя собран как единая панель принятия решений: сигналы, проекты, поручения и активность ассистентов видны в одном рабочем поле.</div>
-            </section>
-          </div>
+          <section class="panel section widget" data-widget-id="upcoming" draggable="true">
+            <div class="section-head">
+              <div><h2>Дальше по срокам</h2><p>Поручения без пометки «сегодня»</p></div>
+              <div class="widget-controls">
+                <button type="button" class="icon-btn widget-drag-handle" title="Перетащить" aria-label="Перетащить виджет">⠿</button>
+                <button type="button" class="icon-btn widget-wide-toggle" title="Изменить ширину" aria-label="Изменить ширину виджета">⤢</button>
+                <button type="button" class="icon-btn widget-hide-btn" title="Скрыть виджет" aria-label="Скрыть виджет">✕</button>
+              </div>
+            </div>
+            <div class="calendar-list" id="upcomingList"><div class="footer-note">Загрузка...</div></div>
+            <div class="footer-note" style="margin-top:14px">Экран руководителя собран как единая панель принятия решений: сигналы, проекты, поручения и активность ассистентов видны в одном рабочем поле.</div>
+          </section>
         </section>
       </main>
     </div>
   </div>
   <script src="config.js"></script>
+  <script src="prefs.js"></script>
   <script src="auth.js"></script>
   <script>Auth.requireAuth();</script>
   <script src="app.js"></script>
+  <script src="widgets.js"></script>
   <script src="index.js"></script>
 </body>
 </html>
