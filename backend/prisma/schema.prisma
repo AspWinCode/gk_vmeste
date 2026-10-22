@@ -31,6 +31,20 @@ enum TaskStatus {
   CANCELLED
 }
 
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+// TASK — поручение (из расшифровки/почты/вручную), видно всей команде, как раньше.
+// REMINDER — личное напоминание: видно только создателю (createdById), фильтруется
+// на уровне API через query ?mine=true — см. комментарий у tasksRouter.
+enum TaskKind {
+  TASK
+  REMINDER
+}
+
 enum TranscriptionStatus {
   QUEUED
   TRANSCRIBING
@@ -48,6 +62,8 @@ model User {
   createdAt    DateTime @default(now())
 
   tasksOwned       Task[]            @relation("TaskOwner")
+  tasksCreated     Task[]            @relation("TaskCreatedBy")
+  taskComments     TaskComment[]
   transcriptionJobs TranscriptionJob[] @relation("JobCreatedBy")
   auditLogs        AuditLog[]
 }
@@ -81,20 +97,38 @@ model Project {
 }
 
 model Task {
-  id          String     @id @default(cuid())
+  id          String       @id @default(cuid())
   title       String
   description String?
-  status      TaskStatus @default(OPEN)
+  status      TaskStatus   @default(OPEN)
+  priority    TaskPriority @default(MEDIUM)
+  kind        TaskKind     @default(TASK)
   dueDate     DateTime?
-  source      String? // "transcriber:<jobId>" | "manual" | "ksg:<stageId>"
+  source      String? // "transcriber:<jobId>" | "manual" | "ksg:<stageId>" | "mail:<messageId>"
 
-  project    Project? @relation(fields: [projectId], references: [id])
-  projectId  String?
-  owner      User?    @relation("TaskOwner", fields: [ownerId], references: [id])
-  ownerId    String?
+  project     Project? @relation(fields: [projectId], references: [id])
+  projectId   String?
+  owner       User?    @relation("TaskOwner", fields: [ownerId], references: [id])
+  ownerId     String?
+  createdBy   User?    @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  createdById String?
+
+  comments   TaskComment[]
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId    String
+  author    User?    @relation(fields: [authorId], references: [id])
+  authorId  String?
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([taskId, createdAt])
 }
 
 model TranscriptionJob {

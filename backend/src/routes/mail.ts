@@ -42,6 +42,11 @@ mailRouter.post("/analyze", async (req, res) => {
     },
   });
 
+  // Приоритет письма (строка для MailMessage, см. выше) переносим на приоритет задачи
+  // (enum Task.priority) — иначе фильтр "только критичные" на странице Задач не видел бы
+  // срочные поручения из почты.
+  const taskPriority = analysis.priority === "высокий" ? "HIGH" : analysis.priority === "низкий" ? "LOW" : "MEDIUM";
+
   let createdTasks: Awaited<ReturnType<typeof prisma.task.findMany>> = [];
   if (analysis.tasks.length > 0) {
     await prisma.task.createMany({
@@ -51,6 +56,7 @@ mailRouter.post("/analyze", async (req, res) => {
         dueDate: t.dueDate ? new Date(t.dueDate) : undefined,
         projectId,
         source: `mail:${message.id}`,
+        priority: taskPriority as "LOW" | "MEDIUM" | "HIGH",
       })),
     });
     createdTasks = await prisma.task.findMany({ where: { source: `mail:${message.id}` } });

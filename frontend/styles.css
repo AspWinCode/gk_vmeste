@@ -159,6 +159,16 @@ h1{margin:0 0 10px;font-size:var(--text-xl);line-height:1.1}
 .toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-radius:14px;border:1px solid var(--color-divider);background:var(--color-surface-2)}
 .toggle-row label{display:flex;align-items:center;gap:10px;font-size:var(--text-sm);font-weight:600;cursor:pointer}
 .toggle-row input[type="checkbox"]{width:18px;height:18px;accent-color:var(--color-primary);cursor:pointer}
+
+/* Карточка задачи (task-modal.js) — переиспользуемая модалка поверх любой страницы */
+.task-modal-backdrop{display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto}
+.task-modal{width:100%;max-width:640px;padding:24px;margin:auto}
+.task-modal-head{display:flex;align-items:center;gap:10px}
+.task-modal-title{flex:1;font-size:var(--text-lg);font-weight:700;border:none;background:transparent;padding:4px 0}
+.task-modal-title:focus{outline:none;border-bottom:2px solid var(--color-primary)}
+.task-modal-comments{margin-top:20px;padding-top:16px;border-top:1px solid var(--color-divider)}
+.task-card{cursor:pointer}
+.task-card:hover{border-color:var(--color-primary)}
 .signal-list,.feed-list,.project-list,.calendar-list,.assistant-list,.list{display:grid;gap:12px}
 .signal-card,.feed-card,.project-card,.calendar-card,.assistant-card,.row-card{padding:16px;border-radius:20px;border:1px solid var(--color-divider);background:var(--color-surface-2);display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
 /* длинный текст (например, имя файла) в заголовке карточки не ломал layout и не выталкивал

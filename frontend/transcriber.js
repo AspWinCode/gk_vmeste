@@ -239,12 +239,17 @@
     el.innerHTML = tasks
       .map(function (t) {
         return (
-          '<div class="task-item"><div><strong>' + esc(t.title) + "</strong><span>" +
+          '<div class="task-item task-card" data-task-id="' + t.id + '"><div><strong>' + esc(t.title) + "</strong><span>" +
           esc(t.description || "") + (t.dueDate ? " · срок: " + formatTime(t.dueDate) : "") +
           '</span></div><span class="status-chip status-new">' + esc(t.status) + "</span></div>"
         );
       })
       .join("");
+    Array.prototype.forEach.call(el.querySelectorAll("[data-task-id]"), function (card) {
+      card.addEventListener("click", function () {
+        if (window.TaskModal) TaskModal.open(card.getAttribute("data-task-id"), function () { loadJobDetail(state.selectedId); });
+      });
+    });
   }
 
   async function exportJob(id) {

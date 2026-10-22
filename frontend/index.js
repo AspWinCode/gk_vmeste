@@ -252,6 +252,14 @@
     });
   }
 
+  function wireTaskCardClicks(container) {
+    Array.prototype.forEach.call(container.querySelectorAll("[data-task-id]"), function (card) {
+      card.addEventListener("click", function () {
+        if (window.TaskModal) TaskModal.open(card.getAttribute("data-task-id"), loadDashboard);
+      });
+    });
+  }
+
   function renderTasks(filteredTasks) {
     var sorted = sortByDue(filteredTasks);
     var el = document.getElementById("taskList");
@@ -261,11 +269,12 @@
     } else {
       el.innerHTML = top.map(function (t) {
         return (
-          '<div class="calendar-card"><div><strong>' + esc(t.title) + "</strong><span>" +
+          '<div class="calendar-card task-card" data-task-id="' + t.id + '"><div><strong>' + esc(t.title) + "</strong><span>" +
           (t.project ? "Проект: " + esc(t.project.name) + " · " : "") + "срок: " + fmtDue(t.dueDate) + '</span></div>' +
           '<span class="status-chip status-wait">' + (t.status === "IN_PROGRESS" ? "в работе" : "новое") + "</span></div>"
         );
       }).join("");
+      wireTaskCardClicks(el);
     }
 
     var rest = sorted.slice(4, 8);
@@ -274,8 +283,9 @@
       upcomingEl.innerHTML = '<div class="footer-note">Больше поручений по текущему фильтру нет.</div>';
     } else {
       upcomingEl.innerHTML = rest.map(function (t) {
-        return '<div class="calendar-card"><div><strong>' + esc(t.title) + "</strong><span>срок: " + fmtDue(t.dueDate) + "</span></div></div>";
+        return '<div class="calendar-card task-card" data-task-id="' + t.id + '"><div><strong>' + esc(t.title) + "</strong><span>срок: " + fmtDue(t.dueDate) + "</span></div></div>";
       }).join("");
+      wireTaskCardClicks(upcomingEl);
     }
   }
 
