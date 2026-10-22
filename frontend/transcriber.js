@@ -383,15 +383,33 @@
 
   var recordState = { mediaRecorder: null, stream: null, chunks: [], timerHandle: null, startedAt: null };
 
+  // Браузер скрывает реальный список микрофонов (и их названия), пока сайт не получил
+  // разрешение на доступ к медиаустройствам — до этого enumerateDevices() либо не находит
+  // ни одного audioinput, либо отдаёт их без названий. Поэтому при отсутствии размеченных
+  // устройств сами запрашиваем доступ (кратко, сразу останавливая поток) — чтобы список
+  // реальных микрофонов появился проактивно, а не только после нажатия "Начать запись".
   async function populateMicList() {
     var select = document.getElementById("micSelect");
     if (!select || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
     try {
       var devices = await navigator.mediaDevices.enumerateDevices();
       var mics = devices.filter(function (d) { return d.kind === "audioinput"; });
+      var needsPermission = mics.length === 0 || mics.every(function (d) { return !d.label; });
+
+      if (needsPermission && navigator.mediaDevices.getUserMedia) {
+        try {
+          var probeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          probeStream.getTracks().forEach(function (t) { t.stop(); });
+          devices = await navigator.mediaDevices.enumerateDevices();
+          mics = devices.filter(function (d) { return d.kind === "audioinput"; });
+        } catch (permErr) {
+          // Доступ не дан — покажем заглушку, запрос повторится при нажатии "Начать запись".
+        }
+      }
+
       select.innerHTML = mics.length > 0
         ? mics.map(function (d, i) { return '<option value="' + esc(d.deviceId) + '">' + esc(d.label || "Микрофон " + (i + 1)) + "</option>"; }).join("")
-        : '<option value="">Микрофон по умолчанию</option>';
+        : '<option value="">Микрофон не найден — проверьте разрешение в браузере</option>';
     } catch (e) {}
   }
 
