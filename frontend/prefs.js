@@ -11,6 +11,7 @@
   // настройкам.
   var NAV_ITEMS = [
     { id: "index", label: "Рабочий стол" },
+    { id: "tasks", label: "Задачи" },
     { id: "assistants", label: "Каталог ассистентов" },
     { id: "finance", label: "Финансовый аналитик" },
     { id: "transcriber", label: "Транскрибатор-референт" },

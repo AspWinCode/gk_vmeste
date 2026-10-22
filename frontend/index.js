@@ -48,7 +48,7 @@
     var tasks, ksgSummary, ksgStages, scenarios, projects, transcriptionJobs;
     try {
       [tasks, ksgSummary, ksgStages, scenarios, projects, transcriptionJobs] = await Promise.all([
-        fetchJson("/tasks"),
+        fetchJson("/tasks?kind=TASK"), // личные напоминания (kind=REMINDER) сюда не попадают — видны только на странице "Задачи" их создателю
         fetchJson("/ksg/summary"),
         fetchJson("/ksg/stages"),
         fetchJson("/finance/scenarios"),
