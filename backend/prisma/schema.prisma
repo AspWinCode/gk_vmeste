@@ -203,6 +203,18 @@ model SupportProgram {
   updatedAt    DateTime @updatedAt
 }
 
+// Справочник получателей отчётов совещаний (Настройки → "Справочник получателей").
+// Это НЕ учётные записи — люди здесь не входят в систему (без пароля/логина), просто
+// адресаты, из которых в Транскрибаторе можно быстро выбрать, кому отправить протокол.
+model Contact {
+  id        String   @id @default(cuid())
+  fullName  String
+  position  String?
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model AuditLog {
   id        String   @id @default(cuid())
   user      User?    @relation(fields: [userId], references: [id])

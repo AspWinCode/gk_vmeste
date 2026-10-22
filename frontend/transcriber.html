@@ -75,7 +75,23 @@
                 <div class="dropzone">
                   <h3>Выберите файл</h3>
                   <p>Поддержка: mp3, wav, m4a. После обработки будут доступны текст, саммари и список поручений.</p>
-                  <input type="file" id="audioFile" name="audio" accept="audio/*" required style="margin-top:12px;width:100%" />
+                  <input type="file" id="audioFile" name="audio" accept="audio/*" style="margin-top:12px;width:100%" />
+                </div>
+              </div>
+
+              <div class="field">
+                <label>Или запишите с микрофона</label>
+                <div class="dropzone">
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <select class="select" id="micSelect" style="flex:1"><option value="">Микрофон по умолчанию</option></select>
+                    <button type="button" class="icon-btn" id="micRefreshBtn" title="Обновить список микрофонов" aria-label="Обновить список микрофонов">⟳</button>
+                  </div>
+                  <div style="display:flex;gap:10px;align-items:center;margin-top:12px">
+                    <button type="button" class="btn btn-primary" id="recordBtn">● Начать запись</button>
+                    <span id="recordTimer" class="footer-note" style="display:none;font-weight:700">00:00</span>
+                  </div>
+                  <p class="footer-note" style="margin-top:8px">По завершении запись автоматически уйдёт на обработку — отдельно нажимать «Загрузить» не нужно.</p>
+                  <div id="recordError" class="footer-note" style="color:#9E3D3D;display:none;margin-top:6px"></div>
                 </div>
               </div>
 
@@ -89,6 +105,9 @@
               <div class="field">
                 <label>Email участников (через запятую)</label>
                 <input class="input" id="participantEmails" name="participantEmails" placeholder="ivanov@vmeste.local, petrov@vmeste.local" />
+                <select class="select" id="contactPickerUpload" style="margin-top:8px">
+                  <option value="">+ добавить из справочника...</option>
+                </select>
               </div>
 
               <button class="btn btn-primary" type="submit" id="uploadBtn" style="justify-content:center">Загрузить и обработать</button>
@@ -144,6 +163,9 @@
                 <div class="transcript-card">
                   <strong>Email для рассылки</strong>
                   <div class="tags" id="participantEmailsList" style="margin-top:8px"></div>
+                  <select class="select" id="contactPickerJob" style="margin-top:10px">
+                    <option value="">+ добавить из справочника...</option>
+                  </select>
                   <form id="addEmailForm" style="display:flex;gap:8px;margin-top:10px">
                     <input class="input" id="addEmailInput" type="email" placeholder="имя@почта.ru" style="flex:1" />
                     <button class="btn btn-secondary" type="submit">Добавить</button>
@@ -151,12 +173,7 @@
                   <div id="addEmailError" class="footer-note" style="color:#9E3D3D;display:none;margin-top:6px"></div>
                 </div>
 
-                <div class="transcript-card">
-                  <details id="transcriptDetails">
-                    <summary><strong>Расшифровка</strong> <span class="footer-note" id="transcriptLengthNote"></span></summary>
-                    <span id="transcriptText" style="white-space:pre-wrap;overflow-wrap:anywhere;display:block;margin-top:12px">—</span>
-                  </details>
-                </div>
+                <div class="footer-note">Полный текст расшифровки — в <a href="settings.html">Настройках → Расшифровки совещаний</a>, чтобы не загромождать этот экран.</div>
               </div>
             </div>
           </section>

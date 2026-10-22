@@ -177,12 +177,8 @@
     document.getElementById("keyPointsList").innerHTML = (job.keyPoints || [])
       .map(function (p, i) { return '<div class="quote">' + (i + 1) + ". " + esc(p) + "</div>"; })
       .join("") || '<div class="footer-note">Пока нет тезисов.</div>';
-    document.getElementById("transcriptText").textContent = job.transcriptText || "—";
-    var transcriptLen = (job.transcriptText || "").length;
-    document.getElementById("transcriptLengthNote").textContent = transcriptLen > 0 ? "(" + transcriptLen.toLocaleString("ru-RU") + " символов)" : "";
-    // Свёрнуто по умолчанию — длинная расшифровка (десятки тысяч символов) иначе растягивает
-    // всю страницу вниз. Разворачивается кликом по заголовку (нативный <details>/<summary>).
-    document.getElementById("transcriptDetails").open = false;
+    // Полный текст расшифровки показывается не здесь, а в Настройках — см.
+    // settings.js/loadTranscripts(), чтобы не растягивать этот экран на десятки тысяч символов.
 
     // Блок по шаблону встречи (участники/предмет/ход/решения/планы) показываем только когда
     // Claude реально его заполнил — для диктовки эти поля пустые, и блок скрыт целиком,
@@ -290,16 +286,14 @@
     }
   }
 
-  document.getElementById("uploadForm").addEventListener("submit", async function (e) {
-    e.preventDefault();
-    var fileInput = document.getElementById("audioFile");
+  // Общая загрузка — используется и формой (выбор файла), и записью с микрофона
+  // (см. ниже): оба пути собирают один и тот же FormData и ту же обработку ошибок.
+  async function uploadAudio(file) {
     var errorBox = document.getElementById("uploadError");
     errorBox.style.display = "none";
 
-    if (!fileInput.files[0]) return;
-
     var formData = new FormData();
-    formData.append("audio", fileInput.files[0]);
+    formData.append("audio", file, file.name);
     formData.append("meetingType", document.getElementById("meetingType").value);
     formData.append("participantEmails", document.getElementById("participantEmails").value);
     formData.append("language", "ru");
@@ -311,7 +305,6 @@
       var res = await Auth.apiFetch("/transcriber/jobs", { method: "POST", body: formData });
       var data = await res.json();
       if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : JSON.stringify(data.error) || "Не удалось загрузить файл");
-      fileInput.value = "";
       document.getElementById("participantEmails").value = "";
       state.selectedId = data.id;
       await fetchJobs();
@@ -322,7 +315,179 @@
       btn.disabled = false;
       btn.textContent = "Загрузить и обработать";
     }
+  }
+
+  document.getElementById("uploadForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var fileInput = document.getElementById("audioFile");
+    var errorBox = document.getElementById("uploadError");
+    if (!fileInput.files[0]) {
+      errorBox.textContent = "Выберите файл или запишите аудио с микрофона.";
+      errorBox.style.display = "block";
+      return;
+    }
+    await uploadAudio(fileInput.files[0]);
+    fileInput.value = "";
   });
+
+  // --- Справочник получателей: выбор контакта подставляет email в поле рассылки ---
+
+  function appendEmailToField(inputEl, email) {
+    var current = inputEl.value.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+    if (current.indexOf(email) === -1) current.push(email);
+    inputEl.value = current.join(", ");
+  }
+
+  async function loadContactPickers() {
+    try {
+      var res = await Auth.apiFetch("/contacts");
+      if (!res.ok) return;
+      var contacts = await res.json();
+      var optionsHtml = contacts
+        .map(function (c) { return '<option value="' + esc(c.email) + '">' + esc(c.fullName) + (c.position ? " — " + esc(c.position) : "") + "</option>"; })
+        .join("");
+
+      var uploadPicker = document.getElementById("contactPickerUpload");
+      if (uploadPicker) {
+        uploadPicker.innerHTML = '<option value="">+ добавить из справочника...</option>' + optionsHtml;
+        uploadPicker.addEventListener("change", function () {
+          if (!uploadPicker.value) return;
+          appendEmailToField(document.getElementById("participantEmails"), uploadPicker.value);
+          uploadPicker.value = "";
+        });
+      }
+
+      var jobPicker = document.getElementById("contactPickerJob");
+      if (jobPicker) {
+        jobPicker.innerHTML = '<option value="">+ добавить из справочника...</option>' + optionsHtml;
+        jobPicker.addEventListener("change", async function () {
+          if (!jobPicker.value || !state.selectedId) return;
+          var res2 = await Auth.apiFetch("/transcriber/jobs/" + state.selectedId + "/participants", {
+            method: "PATCH",
+            body: { emails: [jobPicker.value] },
+          });
+          var data = await res2.json();
+          if (res2.ok) {
+            renderParticipantEmails(data.participantEmails || []);
+            document.getElementById("sendBtn").disabled = false;
+            var job = state.jobs.find(function (j) { return j.id === state.selectedId; });
+            if (job) job.participantEmails = data.participantEmails;
+          }
+          jobPicker.value = "";
+        });
+      }
+    } catch (e) {}
+  }
+
+  // --- Запись с микрофона: выбор устройства, запись через MediaRecorder, автозагрузка ---
+
+  var recordState = { mediaRecorder: null, stream: null, chunks: [], timerHandle: null, startedAt: null };
+
+  async function populateMicList() {
+    var select = document.getElementById("micSelect");
+    if (!select || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    try {
+      var devices = await navigator.mediaDevices.enumerateDevices();
+      var mics = devices.filter(function (d) { return d.kind === "audioinput"; });
+      select.innerHTML = mics.length > 0
+        ? mics.map(function (d, i) { return '<option value="' + esc(d.deviceId) + '">' + esc(d.label || "Микрофон " + (i + 1)) + "</option>"; }).join("")
+        : '<option value="">Микрофон по умолчанию</option>';
+    } catch (e) {}
+  }
+
+  function formatTimer(ms) {
+    var totalSec = Math.floor(ms / 1000);
+    var m = String(Math.floor(totalSec / 60)).padStart(2, "0");
+    var s = String(totalSec % 60).padStart(2, "0");
+    return m + ":" + s;
+  }
+
+  function pickRecorderMimeType() {
+    var candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"];
+    for (var i = 0; i < candidates.length; i++) {
+      if (window.MediaRecorder && MediaRecorder.isTypeSupported(candidates[i])) return candidates[i];
+    }
+    return "";
+  }
+
+  async function startRecording() {
+    var errorBox = document.getElementById("recordError");
+    errorBox.style.display = "none";
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      errorBox.textContent = "Запись с микрофона недоступна в этом браузере без защищённого соединения (HTTPS/localhost).";
+      errorBox.style.display = "block";
+      return;
+    }
+
+    var deviceId = document.getElementById("micSelect").value;
+    try {
+      recordState.stream = await navigator.mediaDevices.getUserMedia({
+        audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+      });
+    } catch (err) {
+      errorBox.textContent = "Не удалось получить доступ к микрофону: " + err.message;
+      errorBox.style.display = "block";
+      return;
+    }
+
+    await populateMicList(); // теперь, когда доступ дан, у устройств появятся человекочитаемые названия
+
+    var mimeType = pickRecorderMimeType();
+    recordState.chunks = [];
+    recordState.mediaRecorder = mimeType
+      ? new MediaRecorder(recordState.stream, { mimeType: mimeType })
+      : new MediaRecorder(recordState.stream);
+
+    recordState.mediaRecorder.addEventListener("dataavailable", function (e) {
+      if (e.data && e.data.size > 0) recordState.chunks.push(e.data);
+    });
+
+    recordState.mediaRecorder.addEventListener("stop", async function () {
+      recordState.stream.getTracks().forEach(function (t) { t.stop(); });
+      clearInterval(recordState.timerHandle);
+      document.getElementById("recordTimer").style.display = "none";
+
+      var blob = new Blob(recordState.chunks, { type: recordState.mediaRecorder.mimeType || "audio/webm" });
+      var ext = (blob.type.indexOf("ogg") !== -1) ? "ogg" : (blob.type.indexOf("mp4") !== -1 ? "m4a" : "webm");
+      var file = new File([blob], "запись-" + new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-") + "." + ext, { type: blob.type });
+      await uploadAudio(file);
+    });
+
+    recordState.mediaRecorder.start();
+    recordState.startedAt = Date.now();
+    var timerEl = document.getElementById("recordTimer");
+    timerEl.style.display = "inline";
+    timerEl.textContent = "00:00";
+    recordState.timerHandle = setInterval(function () {
+      timerEl.textContent = formatTimer(Date.now() - recordState.startedAt);
+    }, 1000);
+
+    var btn = document.getElementById("recordBtn");
+    btn.textContent = "⏹ Остановить запись";
+    btn.classList.remove("btn-primary");
+    btn.classList.add("btn-secondary");
+  }
+
+  function stopRecording() {
+    if (recordState.mediaRecorder && recordState.mediaRecorder.state !== "inactive") {
+      recordState.mediaRecorder.stop();
+    }
+    var btn = document.getElementById("recordBtn");
+    btn.textContent = "● Начать запись";
+    btn.classList.remove("btn-secondary");
+    btn.classList.add("btn-primary");
+  }
+
+  document.getElementById("recordBtn").addEventListener("click", function () {
+    var isRecording = recordState.mediaRecorder && recordState.mediaRecorder.state === "recording";
+    if (isRecording) stopRecording();
+    else startRecording();
+  });
+
+  document.getElementById("micRefreshBtn").addEventListener("click", populateMicList);
+  populateMicList();
+  loadContactPickers();
 
   document.getElementById("addEmailForm").addEventListener("submit", async function (e) {
     e.preventDefault();

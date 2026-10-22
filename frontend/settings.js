@@ -110,8 +110,99 @@
     });
   }
 
+  function formatTime(iso) {
+    if (!iso) return "—";
+    return new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+
+  async function loadContacts() {
+    var tbody = document.getElementById("contactsTableBody");
+    try {
+      var res = await Auth.apiFetch("/contacts");
+      if (!res.ok) return;
+      var contacts = await res.json();
+      if (contacts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="footer-note">Справочник пока пуст.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = contacts
+        .map(function (c) {
+          return (
+            "<tr><td><strong>" + esc(c.fullName) + "</strong></td><td>" + esc(c.position || "—") + "</td><td>" + esc(c.email) +
+            '</td><td><button type="button" class="btn btn-secondary" data-delete-contact="' + c.id + '" style="min-height:32px;padding:0 12px">Удалить</button></td></tr>'
+          );
+        })
+        .join("");
+      Array.prototype.forEach.call(tbody.querySelectorAll("[data-delete-contact]"), function (btn) {
+        btn.addEventListener("click", async function () {
+          if (!confirm("Удалить контакт из справочника?")) return;
+          await Auth.apiFetch("/contacts/" + btn.getAttribute("data-delete-contact"), { method: "DELETE" });
+          loadContacts();
+        });
+      });
+    } catch (e) {}
+  }
+
+  var addContactForm = document.getElementById("addContactForm");
+  if (addContactForm) {
+    addContactForm.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var errorBox = document.getElementById("contactFormError");
+      errorBox.style.display = "none";
+      var payload = {
+        fullName: document.getElementById("contactFullName").value.trim(),
+        position: document.getElementById("contactPosition").value.trim() || undefined,
+        email: document.getElementById("contactEmail").value.trim(),
+      };
+      try {
+        var res = await Auth.apiFetch("/contacts", { method: "POST", body: payload });
+        var data = await res.json();
+        if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : JSON.stringify(data.error) || "Не удалось добавить контакт");
+        addContactForm.reset();
+        loadContacts();
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.style.display = "block";
+      }
+    });
+  }
+
+  var MEETING_LABEL = { QUEUED: "в очереди", TRANSCRIBING: "распознавание речи", SUMMARIZING: "анализ Claude", DONE: "готово", FAILED: "ошибка" };
+
+  async function loadTranscripts() {
+    var container = document.getElementById("transcriptsList");
+    if (!container) return;
+    try {
+      var res = await Auth.apiFetch("/transcriber/jobs");
+      if (!res.ok) return;
+      var jobs = await res.json();
+      if (jobs.length === 0) {
+        container.innerHTML = '<div class="footer-note">Пока нет ни одной обработанной записи.</div>';
+        return;
+      }
+      container.innerHTML = jobs
+        .map(function (j) {
+          var len = (j.transcriptText || "").length;
+          var lenNote = len > 0 ? "(" + len.toLocaleString("ru-RU") + " символов)" : "";
+          var body = j.transcriptText
+            ? '<span style="white-space:pre-wrap;overflow-wrap:anywhere;display:block;margin-top:12px">' + esc(j.transcriptText) + "</span>"
+            : '<div class="footer-note" style="margin-top:12px">' + (j.status === "FAILED" ? "Обработка завершилась ошибкой." : "Расшифровка ещё не готова — статус: " + (MEETING_LABEL[j.status] || j.status) + ".") + "</div>";
+          return (
+            '<div class="transcript-card"><details>' +
+            "<summary><strong>" + esc(j.audioFileName) + "</strong> <span class=\"footer-note\">" +
+            esc(j.meetingType || "Аудио") + " · " + formatTime(j.createdAt) + " " + lenNote + "</span></summary>" +
+            body +
+            "</details></div>"
+          );
+        })
+        .join("");
+    } catch (e) {}
+  }
+
   renderProfile();
   loadUsers();
   renderNavToggles();
   renderWidgetToggles();
+  loadContacts();
+  loadTranscripts();
 })();

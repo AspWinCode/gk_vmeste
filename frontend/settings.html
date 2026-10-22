@@ -108,6 +108,32 @@
             </table>
           </div>
         </section>
+
+        <section class="panel section">
+          <div class="section-head">
+            <div><h2>Справочник получателей</h2><p>ФИО, должность и почта — чтобы быстро выбирать адресатов в Транскрибаторе при рассылке протокола. Это не пользователи системы — без логина и пароля.</p></div>
+          </div>
+          <form id="addContactForm" class="form-grid">
+            <div class="field"><label>ФИО</label><input class="input" id="contactFullName" required /></div>
+            <div class="field"><label>Должность</label><input class="input" id="contactPosition" placeholder="Необязательно" /></div>
+            <div class="field"><label>Почта</label><input class="input" id="contactEmail" type="email" required /></div>
+            <button class="btn btn-primary" type="submit" style="grid-column:1/-1;justify-content:center">Добавить в справочник</button>
+            <div id="contactFormError" class="footer-note" style="color:#9E3D3D;display:none;grid-column:1/-1"></div>
+          </form>
+          <div class="table-wrap" style="margin-top:16px">
+            <table class="table">
+              <thead><tr><th>ФИО</th><th>Должность</th><th>Почта</th><th></th></tr></thead>
+              <tbody id="contactsTableBody"><tr><td colspan="4" class="footer-note">Загрузка...</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel section">
+          <div class="section-head">
+            <div><h2>Расшифровки совещаний</h2><p>Полные тексты расшифровок из Транскрибатора — собраны здесь, чтобы не загромождать рабочий экран ассистента</p></div>
+          </div>
+          <div class="stack" id="transcriptsList"><div class="footer-note">Загрузка...</div></div>
+        </section>
       </main>
     </div>
   </div>
