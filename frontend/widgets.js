@@ -49,9 +49,12 @@
     if (draggedId === targetId) return;
     var prefs = Prefs.getDashboardPrefs();
     var from = prefs.order.indexOf(draggedId);
-    var to = prefs.order.indexOf(targetId);
-    if (from === -1 || to === -1) return;
+    if (from === -1 || prefs.order.indexOf(targetId) === -1) return;
     prefs.order.splice(from, 1);
+    // Индекс цели пересчитываем ПОСЛЕ удаления перетаскиваемого виджета из массива —
+    // если dragged шёл раньше target, удаление сдвигает все последующие индексы на 1,
+    // и индекс, посчитанный до splice, указывал бы на позицию на один слот дальше.
+    var to = prefs.order.indexOf(targetId);
     prefs.order.splice(to, 0, draggedId);
     Prefs.setDashboardPrefs(prefs);
     applyPrefs();

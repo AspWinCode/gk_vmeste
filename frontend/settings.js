@@ -2,11 +2,7 @@
   var ROLE_LABEL = { EXECUTIVE: "Руководитель", ANALYST: "Аналитик", PROJECT_OFFICE: "Офис проекта", OPERATOR: "Оператор", ADMIN: "Администратор" };
   var ROLES = Object.keys(ROLE_LABEL);
 
-  function esc(str) {
-    var div = document.createElement("div");
-    div.textContent = str == null ? "" : String(str);
-    return div.innerHTML;
-  }
+  var esc = window.escHtml; // общий хелпер, см. util.js
 
   function renderProfile() {
     var user = Auth.getUser();
@@ -173,6 +169,9 @@
     var container = document.getElementById("transcriptsList");
     if (!container) return;
     try {
+      // Список отдаёт только метаданные, без полного transcriptText (см. комментарий
+      // у GET /transcriber/jobs в backend) — до 50 полных расшифровок не тянутся по
+      // сети при каждой загрузке страницы, только при разворачивании конкретной карточки.
       var res = await Auth.apiFetch("/transcriber/jobs");
       if (!res.ok) return;
       var jobs = await res.json();
@@ -182,20 +181,41 @@
       }
       container.innerHTML = jobs
         .map(function (j) {
-          var len = (j.transcriptText || "").length;
-          var lenNote = len > 0 ? "(" + len.toLocaleString("ru-RU") + " символов)" : "";
-          var body = j.transcriptText
-            ? '<span style="white-space:pre-wrap;overflow-wrap:anywhere;display:block;margin-top:12px">' + esc(j.transcriptText) + "</span>"
-            : '<div class="footer-note" style="margin-top:12px">' + (j.status === "FAILED" ? "Обработка завершилась ошибкой." : "Расшифровка ещё не готова — статус: " + (MEETING_LABEL[j.status] || j.status) + ".") + "</div>";
           return (
-            '<div class="transcript-card"><details>' +
+            '<div class="transcript-card"><details data-job-id="' + j.id + '">' +
             "<summary><strong>" + esc(j.audioFileName) + "</strong> <span class=\"footer-note\">" +
-            esc(j.meetingType || "Аудио") + " · " + formatTime(j.createdAt) + " " + lenNote + "</span></summary>" +
-            body +
+            esc(j.meetingType || "Аудио") + " · " + formatTime(j.createdAt) + "</span></summary>" +
+            '<div class="transcript-body" style="margin-top:12px"></div>' +
             "</details></div>"
           );
         })
         .join("");
+
+      Array.prototype.forEach.call(container.querySelectorAll("details"), function (details) {
+        var loaded = false;
+        details.addEventListener("toggle", async function () {
+          if (!details.open || loaded) return;
+          loaded = true;
+          var body = details.querySelector(".transcript-body");
+          body.innerHTML = '<div class="footer-note">Загрузка...</div>';
+          try {
+            var jobRes = await Auth.apiFetch("/transcriber/jobs/" + details.getAttribute("data-job-id"));
+            if (!jobRes.ok) throw new Error("bad status " + jobRes.status);
+            var job = await jobRes.json();
+            var len = (job.transcriptText || "").length;
+            if (len > 0) {
+              var summaryNote = details.querySelector("summary .footer-note");
+              summaryNote.textContent += " (" + len.toLocaleString("ru-RU") + " символов)";
+            }
+            body.innerHTML = job.transcriptText
+              ? '<span style="white-space:pre-wrap;overflow-wrap:anywhere;display:block">' + esc(job.transcriptText) + "</span>"
+              : '<div class="footer-note">' + (job.status === "FAILED" ? "Обработка завершилась ошибкой." : "Расшифровка ещё не готова — статус: " + (MEETING_LABEL[job.status] || job.status) + ".") + "</div>";
+          } catch (e) {
+            loaded = false;
+            body.innerHTML = '<div class="footer-note" style="color:#9E3D3D">Не удалось загрузить расшифровку.</div>';
+          }
+        });
+      });
     } catch (e) {}
   }
 

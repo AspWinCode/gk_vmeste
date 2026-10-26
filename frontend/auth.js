@@ -67,11 +67,7 @@
     }
   }
 
-  function esc(str) {
-    var div = document.createElement("div");
-    div.textContent = str == null ? "" : String(str);
-    return div.innerHTML;
-  }
+  var esc = window.escHtml; // общий хелпер, см. util.js
 
   // Колокольчик уведомлений — общий для всех защищённых страниц, монтируется здесь
   // одним местом вместо дублирования разметки/логики в каждом *.html.

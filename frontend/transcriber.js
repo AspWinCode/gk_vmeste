@@ -24,11 +24,7 @@
   };
   var ACTIVE_STATUSES = ["QUEUED", "TRANSCRIBING", "SUMMARIZING"];
 
-  function esc(str) {
-    var div = document.createElement("div");
-    div.textContent = str == null ? "" : String(str);
-    return div.innerHTML;
-  }
+  var esc = window.escHtml; // общий хелпер, см. util.js
 
   function formatTime(iso) {
     if (!iso) return "—";
@@ -306,6 +302,9 @@
     var btn = document.getElementById("uploadBtn");
     btn.disabled = true;
     btn.textContent = "Загрузка...";
+    // Возвращаем успех/неудачу явно — вызывающий код (форма) должен знать, стоит ли
+    // очищать выбранный файл: если загрузка не удалась, пользователь должен иметь
+    // возможность просто нажать "Загрузить" ещё раз, а не выбирать файл заново.
     try {
       var res = await Auth.apiFetch("/transcriber/jobs", { method: "POST", body: formData });
       var data = await res.json();
@@ -313,9 +312,11 @@
       document.getElementById("participantEmails").value = "";
       state.selectedId = data.id;
       await fetchJobs();
+      return true;
     } catch (err) {
       errorBox.textContent = err.message;
       errorBox.style.display = "block";
+      return false;
     } finally {
       btn.disabled = false;
       btn.textContent = "Загрузить и обработать";
@@ -331,8 +332,8 @@
       errorBox.style.display = "block";
       return;
     }
-    await uploadAudio(fileInput.files[0]);
-    fileInput.value = "";
+    var ok = await uploadAudio(fileInput.files[0]);
+    if (ok) fileInput.value = "";
   });
 
   // --- Справочник получателей: выбор контакта подставляет email в поле рассылки ---
@@ -388,11 +389,30 @@
 
   var recordState = { mediaRecorder: null, stream: null, chunks: [], timerHandle: null, startedAt: null };
 
-  // Браузер скрывает реальный список микрофонов (и их названия), пока сайт не получил
-  // разрешение на доступ к медиаустройствам — до этого enumerateDevices() либо не находит
-  // ни одного audioinput, либо отдаёт их без названий. Поэтому при отсутствии размеченных
-  // устройств сами запрашиваем доступ (кратко, сразу останавливая поток) — чтобы список
-  // реальных микрофонов появился проактивно, а не только после нажатия "Начать запись".
+  function renderMicOptions(mics) {
+    var select = document.getElementById("micSelect");
+    select.innerHTML = mics.length > 0
+      ? mics.map(function (d, i) { return '<option value="' + esc(d.deviceId) + '">' + esc(d.label || "Микрофон " + (i + 1)) + "</option>"; }).join("")
+      : '<option value="">Микрофон не найден — нажмите ⟳ или «Начать запись»</option>';
+  }
+
+  // Список БЕЗ запроса разрешения — то, что браузер готов отдать прямо сейчас. Пока сайт
+  // не получил доступ к медиаустройствам, это обычно пусто или без человекочитаемых
+  // названий, но вызывается при каждой загрузке страницы, поэтому НЕ должен сам
+  // запрашивать permission — иначе любой, кто просто открыл Транскрибатор посмотреть
+  // статус, получал бы всплывающий запрос доступа к микрофону.
+  async function listMicsWithoutPrompt() {
+    var select = document.getElementById("micSelect");
+    if (!select || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    try {
+      var devices = await navigator.mediaDevices.enumerateDevices();
+      renderMicOptions(devices.filter(function (d) { return d.kind === "audioinput"; }));
+    } catch (e) {}
+  }
+
+  // Список С запросом разрешения, если устройства ещё не размечены — вызывается только по
+  // явному действию пользователя (кнопка ⟳ "Обновить список" или после уже полученного
+  // доступа в startRecording), никогда при простой загрузке страницы.
   async function populateMicList() {
     var select = document.getElementById("micSelect");
     if (!select || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
@@ -408,13 +428,11 @@
           devices = await navigator.mediaDevices.enumerateDevices();
           mics = devices.filter(function (d) { return d.kind === "audioinput"; });
         } catch (permErr) {
-          // Доступ не дан — покажем заглушку, запрос повторится при нажатии "Начать запись".
+          // Доступ не дан — покажем заглушку, запрос повторится при следующем явном клике.
         }
       }
 
-      select.innerHTML = mics.length > 0
-        ? mics.map(function (d, i) { return '<option value="' + esc(d.deviceId) + '">' + esc(d.label || "Микрофон " + (i + 1)) + "</option>"; }).join("")
-        : '<option value="">Микрофон не найден — проверьте разрешение в браузере</option>';
+      renderMicOptions(mics);
     } catch (e) {}
   }
 
@@ -509,7 +527,7 @@
   });
 
   document.getElementById("micRefreshBtn").addEventListener("click", populateMicList);
-  populateMicList();
+  listMicsWithoutPrompt();
   loadContactPickers();
 
   document.getElementById("addEmailForm").addEventListener("submit", async function (e) {

@@ -6,42 +6,58 @@ import { requireAuth } from "../middleware/auth";
 export const tasksRouter = Router();
 tasksRouter.use(requireAuth);
 
-function startOfToday() {
+// UTC, а не локальное время сервера — dueDate везде в приложении (фронтенд, task-modal.js)
+// хранится и читается как UTC-полночь, см. тот же комментарий в task-modal.js про
+// T00:00:00Z. Локальное server-time здесь сдвигало бы "сегодня/неделя" на часовой
+// пояс сервера относительно того, что реально записано в поле.
+function startOfTodayUtc() {
   const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
 }
 
-function startOfNextWeek() {
-  const d = startOfToday();
-  d.setDate(d.getDate() + 7);
+function startOfNextWeekUtc() {
+  const d = startOfTodayUtc();
+  d.setUTCDate(d.getUTCDate() + 7);
   return d;
 }
 
 // GET /api/tasks — «Поручения дня» на рабочем столе, карточка «Извлечённые поручения»
 // в Транскрибаторе и отдельная страница «Задачи» (tasks.html) — все три используют этот
 // один эндпоинт с разными комбинациями фильтров.
-// ?mine=true — личные напоминания (kind=REMINDER) видны только их создателю, поэтому
-// этот фильтр всегда по req.auth.userId, а не по произвольному query-параметру.
+// Приватность личных напоминаний (kind=REMINDER) гарантируется ЗДЕСЬ, на сервере, а не
+// опциональным query-параметром, которым клиент мог бы забыть (или не захотеть)
+// воспользоваться — раньше это был необязательный ?mine=true, из-за чего
+// GET /tasks?kind=REMINDER без него отдавал чужие напоминания.
 tasksRouter.get("/", async (req, res) => {
-  const { status, projectId, source, ownerId, kind, priority, period, mine } = req.query;
+  const { status, projectId, source, ownerId, kind, priority, period } = req.query;
 
   const where: any = {
     status: typeof status === "string" ? status : undefined,
     projectId: typeof projectId === "string" ? projectId : undefined,
     source: typeof source === "string" ? source : undefined,
     ownerId: typeof ownerId === "string" ? ownerId : undefined,
-    kind: typeof kind === "string" ? kind : undefined,
     priority: typeof priority === "string" ? priority : undefined,
   };
 
-  if (mine === "true") where.createdById = req.auth!.userId;
+  if (kind === "REMINDER") {
+    where.kind = "REMINDER";
+    where.createdById = req.auth!.userId;
+  } else if (kind === "TASK") {
+    where.kind = "TASK";
+  } else {
+    // kind не указан явно — отдаём все командные TASK плюс СВОИ REMINDER,
+    // но никогда чужие напоминания.
+    where.OR = [{ kind: "TASK" }, { kind: "REMINDER", createdById: req.auth!.userId }];
+  }
 
   if (period === "today") {
-    where.dueDate = { gte: startOfToday(), lt: new Date(startOfToday().getTime() + 86400000) };
+    const start = startOfTodayUtc();
+    where.dueDate = { gte: start, lt: new Date(start.getTime() + 86400000) };
   } else if (period === "week") {
-    where.dueDate = { gte: startOfToday(), lt: startOfNextWeek() };
-  } else if (period === "critical") {
+    where.dueDate = { gte: startOfTodayUtc(), lt: startOfNextWeekUtc() };
+  } else if (period === "critical" && where.priority === undefined) {
+    // Не затираем явный ?priority=..., если он уже был передан вместе с period=critical —
+    // иначе комбинация "critical + LOW" молча теряла бы priority=LOW.
     where.priority = "HIGH";
   }
 
@@ -58,6 +74,12 @@ tasksRouter.get("/", async (req, res) => {
   res.json(tasks);
 });
 
+// 404 (а не 403) для чужого REMINDER — не подтверждаем даже сам факт существования
+// чужого личного напоминания по угаданному/подсмотренному id.
+function isForeignReminder(task: { kind: string; createdById: string | null }, userId: string) {
+  return task.kind === "REMINDER" && task.createdById !== userId;
+}
+
 tasksRouter.get("/:id", async (req, res) => {
   const task = await prisma.task.findUnique({
     where: { id: req.params.id },
@@ -68,7 +90,9 @@ tasksRouter.get("/:id", async (req, res) => {
       comments: { orderBy: { createdAt: "asc" }, include: { author: { select: { id: true, name: true } } } },
     },
   });
-  if (!task) return res.status(404).json({ error: "Задача не найдена" });
+  if (!task || isForeignReminder(task, req.auth!.userId)) {
+    return res.status(404).json({ error: "Задача не найдена" });
+  }
   res.json(task);
 });
 
@@ -108,6 +132,12 @@ const updateTaskSchema = z.object({
 tasksRouter.patch("/:id", async (req, res) => {
   const parsed = updateTaskSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const existing = await prisma.task.findUnique({ where: { id: req.params.id } });
+  if (!existing || isForeignReminder(existing, req.auth!.userId)) {
+    return res.status(404).json({ error: "Задача не найдена" });
+  }
+
   const { dueDate, ...rest } = parsed.data;
   const task = await prisma.task.update({
     where: { id: req.params.id },
@@ -117,6 +147,10 @@ tasksRouter.patch("/:id", async (req, res) => {
 });
 
 tasksRouter.delete("/:id", async (req, res) => {
+  const existing = await prisma.task.findUnique({ where: { id: req.params.id } });
+  if (!existing || isForeignReminder(existing, req.auth!.userId)) {
+    return res.status(404).json({ error: "Задача не найдена" });
+  }
   await prisma.task.delete({ where: { id: req.params.id } });
   res.status(204).end();
 });
@@ -126,6 +160,12 @@ const addCommentSchema = z.object({ body: z.string().min(1) });
 tasksRouter.post("/:id/comments", async (req, res) => {
   const parsed = addCommentSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
+
+  const task = await prisma.task.findUnique({ where: { id: req.params.id } });
+  if (!task || isForeignReminder(task, req.auth!.userId)) {
+    return res.status(404).json({ error: "Задача не найдена" });
+  }
+
   const comment = await prisma.taskComment.create({
     data: { taskId: req.params.id, body: parsed.data.body, authorId: req.auth!.userId },
     include: { author: { select: { id: true, name: true } } },

@@ -1,9 +1,5 @@
 (function () {
-  function esc(str) {
-    var div = document.createElement("div");
-    div.textContent = str == null ? "" : String(str);
-    return div.innerHTML;
-  }
+  var esc = window.escHtml; // общий хелпер, см. util.js
   function fmtMoney(v) {
     if (v === null || v === undefined) return "—";
     var abs = Math.abs(v);
@@ -91,8 +87,37 @@
     state.signals = buildSignals(criticalKsg, riskyScenarios);
     state.feed = buildFeed(scenarios, transcriptionJobs, ksgStages);
     state.tasks = openTasks.map(function (t) { return Object.assign({}, t, { direction: taskDirection(t) }); });
+    // Кэшируем для refreshTasksOnly() ниже — она пересчитывает только то, что зависит
+    // от /tasks, не трогая КСГ/финансы/проекты/транскрибатор повторным запросом.
+    state.scenarios = scenarios;
+    state.criticalKsg = criticalKsg;
 
     renderFocus(scenarios, criticalKsg, tasks);
+    applyFilters();
+  }
+
+  // Точечное обновление после правки/удаления ОДНОЙ задачи в карточке (task-modal.js) —
+  // перезапрашивает только /tasks вместо всех 6 эндпоинтов loadDashboard(), которые
+  // правка задачи никак не затрагивает.
+  async function refreshTasksOnly() {
+    var tasks;
+    try {
+      tasks = await fetchJson("/tasks?kind=TASK");
+      showApiWarning(false);
+    } catch (e) {
+      showApiWarning(true);
+      return;
+    }
+
+    var openTasks = tasks.filter(function (t) { return t.status === "OPEN" || t.status === "IN_PROGRESS"; });
+    var todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    var newTasksToday = tasks.filter(function (t) { return new Date(t.createdAt) >= todayStart; }).length;
+
+    document.getElementById("statNewTasks").textContent = newTasksToday;
+    document.getElementById("kpiActiveTasks").textContent = openTasks.length;
+
+    state.tasks = openTasks.map(function (t) { return Object.assign({}, t, { direction: taskDirection(t) }); });
+    renderFocus(state.scenarios || [], state.criticalKsg || [], tasks);
     applyFilters();
   }
 
@@ -255,7 +280,7 @@
   function wireTaskCardClicks(container) {
     Array.prototype.forEach.call(container.querySelectorAll("[data-task-id]"), function (card) {
       card.addEventListener("click", function () {
-        if (window.TaskModal) TaskModal.open(card.getAttribute("data-task-id"), loadDashboard);
+        if (window.TaskModal) TaskModal.open(card.getAttribute("data-task-id"), refreshTasksOnly);
       });
     });
   }
@@ -365,7 +390,10 @@
   document.getElementById("quickRefreshBtn").addEventListener("click", loadDashboard);
 
   document.getElementById("scrollToSignalsBtn").addEventListener("click", function () {
-    document.querySelector(".dashboard").scrollIntoView({ behavior: "smooth", block: "start" });
+    // Виджеты рабочего стола (см. widgets.js) могут быть скрыты пользователем — если
+    // "Критические сигналы" спрятан, откатываемся на всю сетку виджетов вместо падения.
+    var target = document.querySelector('[data-widget-id="signals"]') || document.getElementById("dashboardGrid");
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 
   document.getElementById("showAllSignalsBtn").addEventListener("click", function () {

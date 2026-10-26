@@ -5,11 +5,7 @@
   var STATUS_CLASS = { OPEN: "status-wait", IN_PROGRESS: "status-wait", DONE: "status-ok", CANCELLED: "status-risk" };
   var PRIORITY_LABEL = { LOW: "низкий", MEDIUM: "обычный", HIGH: "критичный" };
 
-  function esc(str) {
-    var div = document.createElement("div");
-    div.textContent = str == null ? "" : String(str);
-    return div.innerHTML;
-  }
+  var esc = window.escHtml; // общий хелпер, см. util.js
 
   function showApiWarning(show) {
     var box = document.getElementById("apiWarning");
@@ -50,7 +46,9 @@
 
   async function fetchTasks() {
     try {
-      var params = "?kind=" + state.kind + (state.kind === "REMINDER" ? "&mine=true" : "");
+      // Личные напоминания (kind=REMINDER) сервер сам ограничивает создателем —
+      // см. комментарий в backend/src/routes/tasks.ts, доп. параметр здесь не нужен.
+      var params = "?kind=" + state.kind;
       var res = await Auth.apiFetch("/tasks" + params);
       if (!res.ok) throw new Error("bad status " + res.status);
       state.tasks = await res.json();

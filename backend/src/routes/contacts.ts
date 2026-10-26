@@ -37,6 +37,13 @@ contactsRouter.patch("/:id", async (req, res) => {
   const parsed = updateContactSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
+  if (parsed.data.email) {
+    const existing = await prisma.contact.findUnique({ where: { email: parsed.data.email } });
+    if (existing && existing.id !== req.params.id) {
+      return res.status(409).json({ error: "Контакт с такой почтой уже есть в справочнике" });
+    }
+  }
+
   const contact = await prisma.contact.update({ where: { id: req.params.id }, data: parsed.data });
   res.json(contact);
 });

@@ -66,11 +66,40 @@ transcriberRouter.post("/jobs", upload.single("audio"), async (req, res) => {
   res.status(201).json(job);
 });
 
-// GET /api/transcriber/jobs — «Очередь обработки» на экране.
+// GET /api/transcriber/jobs — «Очередь обработки» в Транскрибаторе, лента на рабочем
+// столе и список в Настройках → "Расшифровки совещаний". Ни один из этих списочных
+// экранов не показывает текст расшифровки целиком — он нужен лишь при разворачивании
+// конкретной карточки (settings.js запрашивает его отдельно через GET /jobs/:id в этот
+// момент). Поэтому список не отдаёт `transcriptText`/`speakerSegments`: иначе до 50
+// полных транскриптов (десятки тысяч символов каждый) гонялись бы по сети на каждую
+// загрузку списка ради счётчика символов на свёрнутой карточке.
 transcriberRouter.get("/jobs", async (_req, res) => {
   const jobs = await prisma.transcriptionJob.findMany({
     orderBy: { createdAt: "desc" },
     take: 50,
+    select: {
+      id: true,
+      status: true,
+      audioFilePath: true,
+      audioFileName: true,
+      language: true,
+      meetingType: true,
+      participantEmails: true,
+      summary: true,
+      keyPoints: true,
+      participants: true,
+      subject: true,
+      discussionPoints: true,
+      decisions: true,
+      plans: true,
+      protocolDocPath: true,
+      progressPercent: true,
+      errorMessage: true,
+      projectId: true,
+      createdById: true,
+      createdAt: true,
+      updatedAt: true,
+    },
   });
   res.json(jobs);
 });

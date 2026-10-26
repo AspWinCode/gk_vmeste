@@ -9,11 +9,7 @@
   }
   var PRIORITY_CLASS = { "высокий": "status-risk", "средний": "status-wait", "низкий": "status-ok" };
 
-  function esc(str) {
-    var div = document.createElement("div");
-    div.textContent = str == null ? "" : String(str);
-    return div.innerHTML;
-  }
+  var esc = window.escHtml; // общий хелпер, см. util.js
   function showApiWarning(show) {
     var box = document.getElementById("apiWarning");
     document.getElementById("apiWarningUrl").textContent = window.API_BASE;

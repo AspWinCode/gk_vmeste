@@ -11,12 +11,9 @@
   var currentTaskId = null;
   var onChangeCallback = null;
   var usersCache = null;
+  var currentComments = [];
 
-  function esc(str) {
-    var div = document.createElement("div");
-    div.textContent = str == null ? "" : String(str);
-    return div.innerHTML;
-  }
+  var esc = window.escHtml; // общий хелпер, см. util.js
 
   function toDateInputValue(iso) {
     if (!iso) return "";
@@ -138,7 +135,8 @@
     if (task.source && task.source.indexOf("mail:") === 0) metaParts.push("из письма");
     document.getElementById("tmMeta").textContent = metaParts.join(" · ") || "Создано вручную";
 
-    renderComments(task.comments);
+    currentComments = task.comments || [];
+    renderComments(currentComments);
   }
 
   function close() {
@@ -190,8 +188,11 @@
     var res = await Auth.apiFetch("/tasks/" + currentTaskId + "/comments", { method: "POST", body: { body: body } });
     if (res.ok) {
       input.value = "";
-      var res2 = await Auth.apiFetch("/tasks/" + currentTaskId);
-      if (res2.ok) renderComments((await res2.json()).comments);
+      // POST уже возвращает созданный комментарий вместе с автором — дописываем его
+      // в уже загруженный список вместо повторного GET всей задачи ради одной строки.
+      var comment = await res.json();
+      currentComments.push(comment);
+      renderComments(currentComments);
     }
   }
 

@@ -8,11 +8,7 @@
     "нет плана": "status-new",
   };
 
-  function esc(str) {
-    var div = document.createElement("div");
-    div.textContent = str == null ? "" : String(str);
-    return div.innerHTML;
-  }
+  var esc = window.escHtml; // общий хелпер, см. util.js
   function fmtMoney(v) {
     if (v === null || v === undefined) return "—";
     var abs = Math.abs(v);
