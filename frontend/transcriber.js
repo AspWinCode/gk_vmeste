@@ -455,8 +455,8 @@
     var errorBox = document.getElementById("recordError");
     errorBox.style.display = "none";
 
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      errorBox.textContent = "Запись с микрофона недоступна в этом браузере без защищённого соединения (HTTPS/localhost).";
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+      errorBox.textContent = "Запись с микрофона недоступна в этом браузере без защищённого соединения (HTTPS/localhost) — либо браузер не поддерживает MediaRecorder (например, старый Safari).";
       errorBox.style.display = "block";
       return;
     }
@@ -474,11 +474,24 @@
 
     await populateMicList(); // теперь, когда доступ дан, у устройств появятся человекочитаемые названия
 
+    // new MediaRecorder(...) может бросить исключение (неподдерживаемый mimeType на
+    // некоторых мобильных браузерах даже после успешного isTypeSupported, или общая
+    // неполная поддержка API) — если не поймать, микрофон остался бы захваченным
+    // (поток уже открыт строкой выше), но без возможности ни записать, ни штатно
+    // остановить индикатор записи в браузере.
     var mimeType = pickRecorderMimeType();
     recordState.chunks = [];
-    recordState.mediaRecorder = mimeType
-      ? new MediaRecorder(recordState.stream, { mimeType: mimeType })
-      : new MediaRecorder(recordState.stream);
+    try {
+      recordState.mediaRecorder = mimeType
+        ? new MediaRecorder(recordState.stream, { mimeType: mimeType })
+        : new MediaRecorder(recordState.stream);
+    } catch (err) {
+      recordState.stream.getTracks().forEach(function (t) { t.stop(); });
+      recordState.stream = null;
+      errorBox.textContent = "Запись не поддерживается этим браузером: " + err.message;
+      errorBox.style.display = "block";
+      return;
+    }
 
     recordState.mediaRecorder.addEventListener("dataavailable", function (e) {
       if (e.data && e.data.size > 0) recordState.chunks.push(e.data);
