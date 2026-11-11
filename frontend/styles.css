@@ -143,10 +143,15 @@ h1{margin:0 0 10px;font-size:var(--text-xl);line-height:1.1}
    экрана (auto-fill) и dense-упаковкой, чтобы при скрытии/разной ширине виджетов
    не оставалось пустых "дыр" — следующий виджет сам поднимается на освободившееся
    место. Порядок и состав настраиваются в "Настройки" + перетаскиванием на месте. */
-.dashboard-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));grid-auto-flow:dense;gap:20px;align-items:start}
+.dashboard-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));grid-auto-rows:8px;grid-auto-flow:dense;gap:20px;align-items:start}
 .widget{min-width:0}
 .widget-wide{grid-column:span 2}
 @media (max-width: 860px){.widget-wide{grid-column:span 1}}
+/* "Ключевые показатели" всегда на всю ширину — иначе при соседстве с более высоким
+   виджетом в той же строке (например, "Мои приоритеты") высота строки грида
+   считается по самому высокому элементу, и под короткими KPI-карточками остаётся
+   пустой зазор до конца строки. Полная ширина убирает соседа по строке совсем. */
+[data-widget-id="kpi"]{grid-column:1/-1}
 .widget.drag-over{outline:2px dashed var(--color-primary);outline-offset:4px}
 .widget.dragging{opacity:.45}
 .widget-controls{display:flex;align-items:center;gap:4px;flex:0 0 auto}

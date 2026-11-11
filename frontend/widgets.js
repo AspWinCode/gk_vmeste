@@ -4,13 +4,44 @@
 // (см. .dashboard-grid в styles.css), поэтому при скрытии/смене ширины виджета
 // остальные сами перетекают и закрывают пустоты — расчёт позиций не нужен,
 // браузер делает это за нас, мы только проставляем порядок и класс ширины.
+//
+// Высоты виджетов при этом разные (например, "Мои приоритеты" с 4 поручениями
+// заметно выше, чем "Ключевые показатели") — обычный CSS grid без явного row-span
+// выравнивает все элементы ОДНОЙ строки по высоте самого высокого соседа, оставляя
+// под короткими виджетами пустой зазор до конца строки. Чтобы это не происходило,
+// сетка переведена на мелкие авто-строки (grid-auto-rows, см. styles.css) и каждому
+// виджету выставляется grid-row-end: span N по его РЕАЛЬНОЙ измеренной высоте —
+// тогда dense-упаковка затягивает следующие виджеты в освободившееся место по
+// высоте так же, как и по ширине (классический приём "JS-masonry" для CSS grid).
 (function () {
   var grid = document.getElementById("dashboardGrid");
   if (!grid || !window.Prefs) return;
 
+  var ROW_UNIT = 8; // px — должен совпадать с grid-auto-rows в styles.css
+  var ROW_GAP = 20; // px — должен совпадать с gap в styles.css
+
   var widgets = Array.prototype.slice.call(grid.querySelectorAll("[data-widget-id]"));
   var widgetById = {};
   widgets.forEach(function (el) { widgetById[el.getAttribute("data-widget-id")] = el; });
+
+  function relayoutMasonry() {
+    widgets.forEach(function (el) {
+      if (el.classList.contains("widget-hidden")) return;
+      var height = el.getBoundingClientRect().height;
+      var span = Math.max(1, Math.ceil((height + ROW_GAP) / (ROW_UNIT + ROW_GAP)));
+      el.style.gridRowEnd = "span " + span;
+    });
+  }
+
+  var relayoutQueued = false;
+  function scheduleRelayout() {
+    if (relayoutQueued) return;
+    relayoutQueued = true;
+    requestAnimationFrame(function () {
+      relayoutQueued = false;
+      relayoutMasonry();
+    });
+  }
 
   function applyPrefs() {
     var prefs = Prefs.getDashboardPrefs();
@@ -27,6 +58,7 @@
       el.classList.toggle("widget-hidden", prefs.hidden.indexOf(id) !== -1);
       el.classList.toggle("widget-wide", prefs.wide.indexOf(id) !== -1);
     });
+    scheduleRelayout();
   }
 
   function hideWidget(id) {
@@ -96,11 +128,23 @@
 
   applyPrefs();
 
+  // ResizeObserver сам ловит ЛЮБОе изменение высоты виджета — в том числе асинхронную
+  // подгрузку данных index.js (когда "Загрузка..." заменяется на реальный список) —
+  // без этого пересчёт понадобился бы отдельным вызовом из каждого места в index.js,
+  // которое меняет innerHTML виджета.
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(scheduleRelayout);
+    widgets.forEach(function (el) { ro.observe(el); });
+  } else {
+    scheduleRelayout();
+  }
+  window.addEventListener("resize", scheduleRelayout);
+
   // Чтобы скрытые/показанные через "Настройки" в другой вкладке виджеты
   // применялись и здесь без перезагрузки страницы.
   window.addEventListener("storage", function (e) {
     if (e.key === "vmeste-dashboard-prefs") applyPrefs();
   });
 
-  window.VmesteDashboard = { applyPrefs: applyPrefs };
+  window.VmesteDashboard = { applyPrefs: applyPrefs, relayout: scheduleRelayout };
 })();
