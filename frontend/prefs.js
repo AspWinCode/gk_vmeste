@@ -26,12 +26,12 @@
   // в сетке), порядок — порядок по умолчанию, пока пользователь не перетащил карточки.
   var DASHBOARD_WIDGETS = [
     { id: "kpi", label: "Ключевые показатели", wide: true },
-    { id: "signals", label: "Критические сигналы", wide: true },
-    { id: "tasks", label: "Поручения дня", wide: false },
-    { id: "projects", label: "Проекты под контролем", wide: true },
-    { id: "focus", label: "Ассистенты в фокусе", wide: false },
-    { id: "feed", label: "Лента действий ассистентов", wide: true },
+    { id: "priorities", label: "Мои приоритеты", wide: true },
+    { id: "signals", label: "Критические сигналы", wide: false },
     { id: "upcoming", label: "Дальше по срокам", wide: false },
+    { id: "directions", label: "Ход работы по направлениям", wide: true },
+    { id: "feed", label: "Лента действий ассистентов", wide: true },
+    { id: "quickactions", label: "Быстрые действия", wide: true },
   ];
 
   function readJSON(key, fallback) {

@@ -52,19 +52,15 @@
       </header>
 
       <main class="main">
-        <section class="panel hero" style="display:none">
+        <section class="panel hero">
           <div>
             <div class="eyebrow">Главный экран руководителя</div>
             <h1>Рабочий стол руководителя</h1>
-            <div class="hero-actions">
-              <button class="btn btn-primary" id="scrollToSignalsBtn">Открыть обзор дня</button>
-              <button class="btn btn-secondary" id="generateReportBtn">Сформировать отчет</button>
-            </div>
+            <p class="lead">Ключевые показатели, сигналы и ход исполнения — в одном месте.</p>
           </div>
-          <div class="summary">
-            <div class="summary-item"><strong id="statCritical">—</strong><span>критических сигнала сейчас</span></div>
-            <div class="summary-item"><strong id="statNewTasks">—</strong><span>новых поручений за сутки</span></div>
-            <div class="summary-item"><strong id="statProjectsAtRisk">—</strong><span>проекта требуют решения</span></div>
+          <div class="summary" style="align-content:center;justify-items:end;text-align:right">
+            <span class="footer-note" id="lastUpdatedNote">Обновление...</span>
+            <button type="button" class="icon-btn" id="headerRefreshBtn" title="Обновить сводку" aria-label="Обновить сводку">⟳</button>
           </div>
         </section>
         <div id="apiWarning" class="footer-note" style="display:none;color:#9E3D3D">Не удаётся подключиться к backend по адресу <code id="apiWarningUrl"></code>. Проверьте, что API запущен (см. backend/README.md).</div>
@@ -95,16 +91,36 @@
               </div>
             </div>
             <div class="kpi-grid">
-              <div class="panel kpi-card"><strong id="kpiActiveTasks">—</strong><span>активных задач по проектам</span></div>
-              <div class="panel kpi-card"><strong id="kpiKsgDelays">—</strong><span>отставания по КСГ</span></div>
-              <div class="panel kpi-card"><strong id="kpiTotalNpv">—</strong><span>совокупный NPV по последним моделям</span></div>
-              <div class="panel kpi-card"><strong id="kpiFreshness">—</strong><span>этапов КСГ обновлены за 7 дней</span></div>
+              <div class="panel kpi-card"><strong id="kpiActiveTasks">—</strong><span>активных задач по проектам</span><span class="status-chip" id="kpiActiveTasksBadge" style="margin-top:8px"></span></div>
+              <div class="panel kpi-card"><strong id="kpiKsgDelays">—</strong><span>отставания по КСГ</span><span class="status-chip" id="kpiKsgDelaysBadge" style="margin-top:8px"></span></div>
+              <div class="panel kpi-card"><strong id="kpiTotalNpv">—</strong><span>совокупный NPV по последним моделям</span><span class="status-chip" id="kpiTotalNpvBadge" style="margin-top:8px"></span></div>
+              <div class="panel kpi-card"><strong id="kpiFreshness">—</strong><span>этапов КСГ обновлены за 7 дней</span><span class="status-chip" id="kpiFreshnessBadge" style="margin-top:8px"></span></div>
             </div>
           </section>
 
-          <section class="panel section widget widget-wide" data-widget-id="signals" draggable="true">
+          <section class="panel section widget widget-wide" data-widget-id="priorities" draggable="true">
             <div class="section-head">
-              <div><h2>Критические сигналы</h2></div>
+              <div><h2>Мои приоритеты</h2></div>
+              <div class="widget-controls">
+                <a class="btn btn-secondary" href="tasks.html">Все поручения</a>
+                <button type="button" class="icon-btn widget-drag-handle" title="Перетащить" aria-label="Перетащить виджет">⠿</button>
+                <button type="button" class="icon-btn widget-wide-toggle" title="Изменить ширину" aria-label="Изменить ширину виджета">⤢</button>
+                <button type="button" class="icon-btn widget-hide-btn" title="Скрыть виджет" aria-label="Скрыть виджет">✕</button>
+              </div>
+            </div>
+            <div class="tabs" id="priorityTabs">
+              <button type="button" class="tab active" data-tab="tasks">Поручения</button>
+              <button type="button" class="tab" data-tab="reminders">Задачи</button>
+              <button type="button" class="tab" data-tab="projects">Проекты</button>
+            </div>
+            <div class="calendar-list" id="priorityTasksList"><div class="footer-note">Загрузка...</div></div>
+            <div class="list" id="priorityRemindersList" style="display:none"><div class="footer-note">Загрузка...</div></div>
+            <div class="project-list" id="priorityProjectsList" style="display:none"><div class="footer-note">Загрузка...</div></div>
+          </section>
+
+          <section class="panel section widget" data-widget-id="signals" draggable="true">
+            <div class="section-head">
+              <div><h2>Критические сигналы <span class="status-chip status-new" id="signalsCountBadge">0</span></h2></div>
               <div class="widget-controls">
                 <button class="btn btn-secondary" id="showAllSignalsBtn">Все сигналы</button>
                 <button type="button" class="icon-btn widget-drag-handle" title="Перетащить" aria-label="Перетащить виджет">⠿</button>
@@ -115,21 +131,21 @@
             <div class="signal-list" id="signalsList"><div class="footer-note">Загрузка...</div></div>
           </section>
 
-          <section class="panel section widget" data-widget-id="tasks" draggable="true">
+          <section class="panel section widget" data-widget-id="upcoming" draggable="true">
             <div class="section-head">
-              <div><h2>Поручения дня</h2><p>Что нужно отдать в работу прямо сейчас</p></div>
+              <div><h2>Дальше по срокам</h2><p>Поручения без пометки «сегодня»</p></div>
               <div class="widget-controls">
                 <button type="button" class="icon-btn widget-drag-handle" title="Перетащить" aria-label="Перетащить виджет">⠿</button>
                 <button type="button" class="icon-btn widget-wide-toggle" title="Изменить ширину" aria-label="Изменить ширину виджета">⤢</button>
                 <button type="button" class="icon-btn widget-hide-btn" title="Скрыть виджет" aria-label="Скрыть виджет">✕</button>
               </div>
             </div>
-            <div class="calendar-list" id="taskList"><div class="footer-note">Загрузка...</div></div>
+            <div class="calendar-list" id="upcomingList"><div class="footer-note">Загрузка...</div></div>
           </section>
 
-          <section class="panel section widget widget-wide" data-widget-id="projects" draggable="true">
+          <section class="panel section widget widget-wide" data-widget-id="directions" draggable="true">
             <div class="section-head">
-              <div><h2>Проекты под контролем</h2><p>Короткая сводка по ключевым площадкам и направлениям</p></div>
+              <div><h2>Ход работы по ключевым направлениям</h2></div>
               <div class="widget-controls">
                 <a class="btn btn-secondary" href="finance.html">Все проекты</a>
                 <button type="button" class="icon-btn widget-drag-handle" title="Перетащить" aria-label="Перетащить виджет">⠿</button>
@@ -137,22 +153,11 @@
                 <button type="button" class="icon-btn widget-hide-btn" title="Скрыть виджет" aria-label="Скрыть виджет">✕</button>
               </div>
             </div>
-            <div class="project-list" id="projectList"><div class="footer-note">Загрузка...</div></div>
-          </section>
-
-          <section class="panel section widget" data-widget-id="focus" draggable="true">
-            <div class="section-head">
-              <div><h2>Ассистенты в фокусе</h2><p>Модули, которые сформировали сигналы</p></div>
-              <div class="widget-controls">
-                <button type="button" class="icon-btn widget-drag-handle" title="Перетащить" aria-label="Перетащить виджет">⠿</button>
-                <button type="button" class="icon-btn widget-wide-toggle" title="Изменить ширину" aria-label="Изменить ширину виджета">⤢</button>
-                <button type="button" class="icon-btn widget-hide-btn" title="Скрыть виджет" aria-label="Скрыть виджет">✕</button>
-              </div>
-            </div>
-            <div class="assistant-list">
-              <a class="assistant-card" href="finance.html"><div class="icon">Ф</div><div><strong>Финансовый аналитик</strong><span id="focusFinance">—</span></div></a>
-              <a class="assistant-card" href="ksg.html"><div class="icon" style="background:#003DA5">К</div><div><strong>Контроль КСГ</strong><span id="focusKsg">—</span></div></a>
-              <a class="assistant-card" href="transcriber.html"><div class="icon" style="background:#F2CA00;color:#002D72">Т</div><div><strong>Транскрибатор-референт</strong><span id="focusTranscriber">—</span></div></a>
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Проект</th><th>Поручений</th><th>Выполнено</th></tr></thead>
+                <tbody id="directionsTableBody"><tr><td colspan="3" class="footer-note">Загрузка...</td></tr></tbody>
+              </table>
             </div>
           </section>
 
@@ -168,17 +173,21 @@
             <div class="feed-list" id="feedList"><div class="footer-note">Загрузка...</div></div>
           </section>
 
-          <section class="panel section widget" data-widget-id="upcoming" draggable="true">
+          <section class="panel section widget widget-wide" data-widget-id="quickactions" draggable="true">
             <div class="section-head">
-              <div><h2>Дальше по срокам</h2><p>Поручения без пометки «сегодня»</p></div>
+              <div><h2>Быстрые действия</h2></div>
               <div class="widget-controls">
                 <button type="button" class="icon-btn widget-drag-handle" title="Перетащить" aria-label="Перетащить виджет">⠿</button>
-                <button type="button" class="icon-btn widget-wide-toggle" title="Изменить ширину" aria-label="Изменить ширину виджета">⤢</button>
                 <button type="button" class="icon-btn widget-hide-btn" title="Скрыть виджет" aria-label="Скрыть виджет">✕</button>
               </div>
             </div>
-            <div class="calendar-list" id="upcomingList"><div class="footer-note">Загрузка...</div></div>
-            <div class="footer-note" style="margin-top:14px">Экран руководителя собран как единая панель принятия решений: сигналы, проекты, поручения и активность ассистентов видны в одном рабочем поле.</div>
+            <div class="inline-actions">
+              <a class="btn btn-primary" href="tasks.html">Создать поручение</a>
+              <a class="btn btn-secondary" href="assistants.html">Запустить ассистента</a>
+              <a class="btn btn-secondary" href="finance.html">Создать проект</a>
+              <button type="button" class="btn btn-secondary" id="scrollToSignalsBtn">Посмотреть сигналы</button>
+              <button type="button" class="btn btn-secondary" id="generateReportBtn">Сформировать отчет</button>
+            </div>
           </section>
         </section>
       </main>

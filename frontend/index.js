@@ -23,6 +23,37 @@
     return (new Date(iso).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
   }
 
+  // Группировка "Дальше по срокам" по дню — Сегодня/Завтра/дата, как в макете.
+  function dueDayLabel(iso) {
+    if (!iso) return "Без срока";
+    var d = new Date(iso);
+    var today = new Date(); today.setHours(0, 0, 0, 0);
+    var due = new Date(d); due.setHours(0, 0, 0, 0);
+    var diffDays = Math.round((due - today) / 86400000);
+    if (diffDays === 0) return "Сегодня";
+    if (diffDays === 1) return "Завтра";
+    if (diffDays < 0) return "Просрочено";
+    return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" });
+  }
+
+  // Относительное время для "Ленты действий" — макет показывает часы для сегодняшних
+  // событий и "вчера"/дату для более старых, а не абсолютный timestamp на каждой карточке.
+  function fmtFeedTime(iso) {
+    if (!iso) return "";
+    var d = new Date(iso);
+    var today = new Date();
+    if (d.toDateString() === today.toDateString()) {
+      return d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+    }
+    var yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+    if (d.toDateString() === yesterday.toDateString()) return "вчера";
+    return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+  }
+
+  var PRIORITY_LABEL = { HIGH: "Важно", MEDIUM: "Обычно", LOW: "Низкий" };
+  var PRIORITY_CHIP = { HIGH: "status-wait", MEDIUM: "status-ok", LOW: "status-new" };
+  var PRIORITY_RANK = { HIGH: 0, MEDIUM: 1, LOW: 2 };
+
   function showApiWarning(show) {
     var box = document.getElementById("apiWarning");
     document.getElementById("apiWarningUrl").textContent = window.API_BASE;
@@ -36,8 +67,8 @@
   }
 
   var state = {
-    signals: [], feed: [], tasks: [], projects: [], latestScenarioByProject: {}, ksgStages: [],
-    direction: "", period: "", query: "",
+    signals: [], feed: [], tasks: [], allTasks: [], reminders: null, projects: [], latestScenarioByProject: {}, ksgStages: [],
+    direction: "", period: "", query: "", priorityTab: "tasks",
   };
 
   async function loadDashboard() {
@@ -58,32 +89,32 @@
     }
 
     var openTasks = tasks.filter(function (t) { return t.status === "OPEN" || t.status === "IN_PROGRESS"; });
-    var todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-    var newTasksToday = tasks.filter(function (t) { return new Date(t.createdAt) >= todayStart; }).length;
 
     var criticalKsg = ksgStages.filter(function (s) { return s.status === "критично"; });
     var riskyScenarios = scenarios.filter(function (s) { return s.margin !== null && s.margin < 0.15; });
-    var projectsAtRisk = new Set(
-      criticalKsg.map(function (s) { return s.projectId; }).concat(riskyScenarios.map(function (s) { return s.projectId; }))
-    );
-
-    document.getElementById("statCritical").textContent = criticalKsg.length + riskyScenarios.length;
-    document.getElementById("statNewTasks").textContent = newTasksToday;
-    document.getElementById("statProjectsAtRisk").textContent = projectsAtRisk.size;
+    var overdueTasks = openTasks.filter(function (t) { return t.dueDate && daysFromNow(t.dueDate) < 0; });
 
     document.getElementById("kpiActiveTasks").textContent = openTasks.length;
+    renderKpiBadge("kpiActiveTasksBadge", overdueTasks.length > 0 ? overdueTasks.length + " просрочено" : "В срок", overdueTasks.length > 0 ? "status-risk" : "status-ok");
+
     document.getElementById("kpiKsgDelays").textContent = ksgSummary.criticalStages;
+    renderKpiBadge("kpiKsgDelaysBadge", ksgSummary.criticalStages > 0 ? "Есть отставания" : "В плане", ksgSummary.criticalStages > 0 ? "status-risk" : "status-ok");
+
     var latestScenarioByProject = {};
     scenarios.forEach(function (s) {
       if (!latestScenarioByProject[s.projectId]) latestScenarioByProject[s.projectId] = s; // уже отсортировано desc по createdAt
     });
     var totalNpv = Object.values(latestScenarioByProject).reduce(function (sum, s) { return sum + (s.npv || 0); }, 0);
     document.getElementById("kpiTotalNpv").textContent = fmtMoney(totalNpv);
+    renderKpiBadge("kpiTotalNpvBadge", riskyScenarios.length > 0 ? riskyScenarios.length + " сценариев с риском" : "Маржа в норме", riskyScenarios.length > 0 ? "status-wait" : "status-ok");
+
     document.getElementById("kpiFreshness").textContent = ksgSummary.updatedSharePercent + "%";
+    renderKpiBadge("kpiFreshnessBadge", ksgSummary.updatedSharePercent < 50 ? "Требует внимания" : "Актуально", ksgSummary.updatedSharePercent < 50 ? "status-wait" : "status-ok");
 
     state.projects = projects;
     state.latestScenarioByProject = latestScenarioByProject;
     state.ksgStages = ksgStages;
+    state.allTasks = tasks; // все статусы — нужно для прогресса по направлениям
     state.signals = buildSignals(criticalKsg, riskyScenarios);
     state.feed = buildFeed(scenarios, transcriptionJobs, ksgStages);
     state.tasks = openTasks.map(function (t) { return Object.assign({}, t, { direction: taskDirection(t) }); });
@@ -92,8 +123,20 @@
     state.scenarios = scenarios;
     state.criticalKsg = criticalKsg;
 
-    renderFocus(scenarios, criticalKsg, tasks);
+    renderDirectionsTable();
     applyFilters();
+    noteUpdated();
+  }
+
+  function renderKpiBadge(id, text, chipClass) {
+    var el = document.getElementById(id);
+    el.textContent = text;
+    el.className = "status-chip " + chipClass;
+  }
+
+  function noteUpdated() {
+    var el = document.getElementById("lastUpdatedNote");
+    if (el) el.textContent = "Обновлено сегодня в " + new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
   }
 
   // Точечное обновление после правки/удаления ОДНОЙ задачи в карточке (task-modal.js) —
@@ -110,14 +153,13 @@
     }
 
     var openTasks = tasks.filter(function (t) { return t.status === "OPEN" || t.status === "IN_PROGRESS"; });
-    var todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-    var newTasksToday = tasks.filter(function (t) { return new Date(t.createdAt) >= todayStart; }).length;
-
-    document.getElementById("statNewTasks").textContent = newTasksToday;
+    var overdueTasks = openTasks.filter(function (t) { return t.dueDate && daysFromNow(t.dueDate) < 0; });
     document.getElementById("kpiActiveTasks").textContent = openTasks.length;
+    renderKpiBadge("kpiActiveTasksBadge", overdueTasks.length > 0 ? overdueTasks.length + " просрочено" : "В срок", overdueTasks.length > 0 ? "status-risk" : "status-ok");
 
+    state.allTasks = tasks;
     state.tasks = openTasks.map(function (t) { return Object.assign({}, t, { direction: taskDirection(t) }); });
-    renderFocus(state.scenarios || [], state.criticalKsg || [], tasks);
+    renderDirectionsTable();
     applyFilters();
   }
 
@@ -212,14 +254,17 @@
   function applyFilters() {
     renderSignals(state.signals.filter(matchesFilters));
     renderFeed(state.feed.filter(matchesFilters));
-    renderTasks(state.tasks.filter(matchesTaskFilters));
-    renderProjects();
+    renderPriorityTasksAndUpcoming(state.tasks.filter(matchesTaskFilters));
+    renderPriorityProjects();
   }
 
   function renderSignals(items) {
     var el = document.getElementById("signalsList");
+    var badge = document.getElementById("signalsCountBadge");
+    badge.textContent = items.length;
+    badge.className = "status-chip " + (items.length > 0 ? "status-risk" : "status-new");
     if (items.length === 0) {
-      el.innerHTML = '<div class="footer-note">Нет сигналов по текущему фильтру.</div>';
+      el.innerHTML = '<div class="signal-card"><div><strong>Нет критических сигналов</strong><span>Риски и отклонения под контролем.</span></div><span class="status-chip status-ok">✓</span></div>';
       return;
     }
     el.innerHTML = items.slice(0, 4).map(function (i) {
@@ -228,8 +273,8 @@
     }).join("");
   }
 
-  function renderProjects() {
-    var el = document.getElementById("projectList");
+  function renderProjectsInto(elId) {
+    var el = document.getElementById(elId);
     var projects = state.projects.filter(function (p) { return matchesQuery(p.name); });
     if (state.projects.length === 0) {
       el.innerHTML = '<div class="footer-note">Проектов пока нет — создайте первый на экране «Финансовый аналитик».</div>';
@@ -239,7 +284,7 @@
       el.innerHTML = '<div class="footer-note">Ничего не найдено по запросу.</div>';
       return;
     }
-    el.innerHTML = projects.slice(0, 4).map(function (p) {
+    el.innerHTML = projects.slice(0, 6).map(function (p) {
       var scenario = state.latestScenarioByProject[p.id];
       var maxDeviation = state.ksgStages
         .filter(function (s) { return s.projectId === p.id; })
@@ -256,6 +301,10 @@
     }).join("");
   }
 
+  function renderPriorityProjects() {
+    if (state.priorityTab === "projects") renderProjectsInto("priorityProjectsList");
+  }
+
   function renderFeed(events) {
     var el = document.getElementById("feedList");
     if (events.length === 0) {
@@ -264,8 +313,23 @@
     }
     el.innerHTML = events.slice(0, 4).map(function (e) {
       return '<div class="feed-card"><div><strong>' + esc(e.title) + "</strong><span>" + esc(e.text) +
-        '</span></div><span class="status-chip ' + e.chip + '">' + esc(e.label) + "</span></div>";
+        '</span></div><div style="display:grid;gap:6px;justify-items:end"><span class="status-chip ' + e.chip + '">' + esc(e.label) +
+        '</span><span class="footer-note">' + esc(fmtFeedTime(e.at)) + "</span></div></div>";
     }).join("");
+  }
+
+  // Сортировка для "Мои приоритеты": сначала важные поручения, затем по сроку.
+  function sortByPriorityThenDue(list) {
+    return list.slice().sort(function (a, b) {
+      var aRank = PRIORITY_RANK[a.priority] !== undefined ? PRIORITY_RANK[a.priority] : 1;
+      var bRank = PRIORITY_RANK[b.priority] !== undefined ? PRIORITY_RANK[b.priority] : 1;
+      var pr = aRank - bRank;
+      if (pr !== 0) return pr;
+      if (!a.dueDate && !b.dueDate) return new Date(a.createdAt) - new Date(b.createdAt);
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return new Date(a.dueDate) - new Date(b.dueDate);
+    });
   }
 
   function sortByDue(list) {
@@ -277,49 +341,150 @@
     });
   }
 
-  function wireTaskCardClicks(container) {
+  function wireTaskCardClicks(container, onChange) {
     Array.prototype.forEach.call(container.querySelectorAll("[data-task-id]"), function (card) {
       card.addEventListener("click", function () {
-        if (window.TaskModal) TaskModal.open(card.getAttribute("data-task-id"), refreshTasksOnly);
+        if (window.TaskModal) TaskModal.open(card.getAttribute("data-task-id"), onChange || refreshTasksOnly);
       });
     });
   }
 
-  function renderTasks(filteredTasks) {
-    var sorted = sortByDue(filteredTasks);
-    var el = document.getElementById("taskList");
-    var top = sorted.slice(0, 4);
+  // Отметка поручения выполненным прямо с чекбокса в "Мои приоритеты" — без открытия
+  // карточки. stopPropagation нужен, чтобы клик по чекбоксу не открывал модалку задачи
+  // (на неё навешен обработчик клика по всей карточке, см. wireTaskCardClicks).
+  function wireDoneCheckboxes(container, onChange) {
+    Array.prototype.forEach.call(container.querySelectorAll("[data-done-task-id]"), function (cb) {
+      cb.addEventListener("click", function (e) { e.stopPropagation(); });
+      cb.addEventListener("change", async function () {
+        var id = cb.getAttribute("data-done-task-id");
+        try {
+          await Auth.apiFetch("/tasks/" + id, { method: "PATCH", body: { status: "DONE" } });
+        } catch (e) {}
+        if (onChange) onChange();
+      });
+    });
+  }
+
+  function renderPriorityTasksAndUpcoming(filteredTasks) {
+    var prioritized = sortByPriorityThenDue(filteredTasks);
+    var top = prioritized.slice(0, 4);
+    var topIds = {};
+    top.forEach(function (t) { topIds[t.id] = true; });
+
+    var el = document.getElementById("priorityTasksList");
     if (top.length === 0) {
       el.innerHTML = '<div class="footer-note">Нет поручений по текущему фильтру.</div>';
     } else {
       el.innerHTML = top.map(function (t) {
         return (
-          '<div class="calendar-card task-card" data-task-id="' + t.id + '"><div><strong>' + esc(t.title) + "</strong><span>" +
-          (t.project ? "Проект: " + esc(t.project.name) + " · " : "") + "срок: " + fmtDue(t.dueDate) + '</span></div>' +
-          '<span class="status-chip status-wait">' + (t.status === "IN_PROGRESS" ? "в работе" : "новое") + "</span></div>"
+          '<div class="calendar-card task-card" data-task-id="' + t.id + '">' +
+          '<div style="display:flex;gap:12px;align-items:flex-start;min-width:0">' +
+          '<input type="checkbox" data-done-task-id="' + t.id + '" style="margin-top:4px;width:18px;height:18px;accent-color:var(--color-primary);cursor:pointer" aria-label="Отметить выполненным" />' +
+          '<div><strong>' + esc(t.title) + "</strong><span>" +
+          (t.project ? "Проект: " + esc(t.project.name) + " · " : "") + "срок: " + fmtDue(t.dueDate) + "</span></div></div>" +
+          '<span class="status-chip ' + (PRIORITY_CHIP[t.priority] || "status-ok") + '">' + (PRIORITY_LABEL[t.priority] || "Обычно") + "</span></div>"
         );
       }).join("");
-      wireTaskCardClicks(el);
+      wireTaskCardClicks(el, refreshTasksOnly);
+      wireDoneCheckboxes(el, refreshTasksOnly);
     }
 
-    var rest = sorted.slice(4, 8);
+    // "Дальше по срокам" — всё остальное (не попавшее в топ приоритетов), сгруппировано по дню.
+    var rest = sortByDue(filteredTasks.filter(function (t) { return !topIds[t.id]; })).slice(0, 6);
     var upcomingEl = document.getElementById("upcomingList");
     if (rest.length === 0) {
       upcomingEl.innerHTML = '<div class="footer-note">Больше поручений по текущему фильтру нет.</div>';
     } else {
       upcomingEl.innerHTML = rest.map(function (t) {
-        return '<div class="calendar-card task-card" data-task-id="' + t.id + '"><div><strong>' + esc(t.title) + "</strong><span>срок: " + fmtDue(t.dueDate) + "</span></div></div>";
+        return (
+          '<div class="calendar-card task-card" data-task-id="' + t.id + '">' +
+          '<div><span class="pill">' + esc(dueDayLabel(t.dueDate)) + '</span></div>' +
+          '<div style="flex:1;min-width:0"><strong>' + esc(t.title) + "</strong></div></div>"
+        );
       }).join("");
-      wireTaskCardClicks(upcomingEl);
+      wireTaskCardClicks(upcomingEl, refreshTasksOnly);
     }
   }
 
-  function renderFocus(scenarios, criticalKsg, tasks) {
-    document.getElementById("focusFinance").textContent =
-      scenarios.length + " сценариев рассчитано" + (scenarios.some(function (s) { return s.margin < 0.15; }) ? ", есть риск по марже" : ".");
-    document.getElementById("focusKsg").textContent = criticalKsg.length + " критических отставаний на текущую дату.";
-    var fromTranscriber = tasks.filter(function (t) { return t.source && t.source.indexOf("transcriber:") === 0; }).length;
-    document.getElementById("focusTranscriber").textContent = fromTranscriber + " поручений из встреч и звонков.";
+  // Вкладка "Задачи" в "Мои приоритеты" — личные напоминания (kind=REMINDER), только
+  // свои (сервер сам скоупит по создателю, см. комментарий в routes/tasks.ts). Грузим
+  // лениво при первом переключении на вкладку, а не вместе с остальным дашбордом —
+  // иначе лишний запрос на каждую загрузку страницы ради раздела, который могут не открыть.
+  async function loadRemindersIfNeeded() {
+    if (state.reminders !== null) return;
+    try {
+      state.reminders = await fetchJson("/tasks?kind=REMINDER");
+    } catch (e) {
+      state.reminders = [];
+    }
+    renderPriorityReminders();
+  }
+
+  function renderPriorityReminders() {
+    var el = document.getElementById("priorityRemindersList");
+    var reminders = (state.reminders || []).filter(function (r) { return r.status === "OPEN" || r.status === "IN_PROGRESS"; });
+    if (reminders.length === 0) {
+      el.innerHTML = '<div class="footer-note">Личных напоминаний пока нет — добавить можно на странице «Задачи».</div>';
+      return;
+    }
+    el.innerHTML = sortByDue(reminders).slice(0, 6).map(function (r) {
+      return (
+        '<div class="calendar-card task-card" data-task-id="' + r.id + '">' +
+        '<div style="display:flex;gap:12px;align-items:flex-start;min-width:0">' +
+        '<input type="checkbox" data-done-task-id="' + r.id + '" style="margin-top:4px;width:18px;height:18px;accent-color:var(--color-primary);cursor:pointer" aria-label="Отметить выполненным" />' +
+        '<div><strong>' + esc(r.title) + "</strong><span>срок: " + fmtDue(r.dueDate) + "</span></div></div></div>"
+      );
+    }).join("");
+    wireTaskCardClicks(el, function () { state.reminders = null; loadRemindersIfNeeded(); });
+    wireDoneCheckboxes(el, function () { state.reminders = null; loadRemindersIfNeeded(); });
+  }
+
+  function switchPriorityTab(tab) {
+    state.priorityTab = tab;
+    Array.prototype.forEach.call(document.querySelectorAll("#priorityTabs .tab"), function (b) {
+      b.classList.toggle("active", b.getAttribute("data-tab") === tab);
+    });
+    document.getElementById("priorityTasksList").style.display = tab === "tasks" ? "" : "none";
+    document.getElementById("priorityRemindersList").style.display = tab === "reminders" ? "" : "none";
+    document.getElementById("priorityProjectsList").style.display = tab === "projects" ? "" : "none";
+    if (tab === "reminders") loadRemindersIfNeeded();
+    if (tab === "projects") renderPriorityProjects();
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll("#priorityTabs .tab"), function (btn) {
+    btn.addEventListener("click", function () { switchPriorityTab(btn.getAttribute("data-tab")); });
+  });
+
+  // "Ход работы по ключевым направлениям" — реальный прогресс по проекту: доля
+  // завершённых поручений (DONE) от общего числа, посчитанная по полному списку
+  // задач (а не только открытым, которые видны в остальных виджетах).
+  function renderDirectionsTable() {
+    var body = document.getElementById("directionsTableBody");
+    var byProject = {};
+    state.allTasks.forEach(function (t) {
+      if (!t.projectId) return;
+      if (!byProject[t.projectId]) byProject[t.projectId] = { total: 0, done: 0 };
+      byProject[t.projectId].total += 1;
+      if (t.status === "DONE") byProject[t.projectId].done += 1;
+    });
+    var rows = state.projects
+      .map(function (p) { return { project: p, stats: byProject[p.id] }; })
+      .filter(function (r) { return r.stats && r.stats.total > 0; })
+      .sort(function (a, b) { return b.stats.total - a.stats.total; })
+      .slice(0, 6);
+
+    if (rows.length === 0) {
+      body.innerHTML = '<tr><td colspan="3" class="footer-note">Пока нет проектов с поручениями.</td></tr>';
+      return;
+    }
+    body.innerHTML = rows.map(function (r) {
+      var percent = Math.round((r.stats.done / r.stats.total) * 100);
+      return (
+        "<tr><td><strong>" + esc(r.project.name) + "</strong><br/><span class=\"footer-note\">" + esc(r.project.businessLine) + "</span></td>" +
+        "<td>" + r.stats.total + "</td>" +
+        '<td><div style="display:flex;align-items:center;gap:10px"><div class="bar" style="flex:1;min-width:80px"><i style="width:' + percent + '%"></i></div><span style="white-space:nowrap">' + percent + "%</span></div></td></tr>"
+      );
+    }).join("");
   }
 
   Array.prototype.forEach.call(document.querySelectorAll("#directionFilters .filter"), function (btn) {
@@ -387,7 +552,9 @@
     applyFilters();
   });
 
-  document.getElementById("quickRefreshBtn").addEventListener("click", loadDashboard);
+  document.getElementById("headerRefreshBtn").addEventListener("click", loadDashboard);
+  var sidebarRefreshBtn = document.getElementById("quickRefreshBtn");
+  if (sidebarRefreshBtn) sidebarRefreshBtn.addEventListener("click", loadDashboard);
 
   document.getElementById("scrollToSignalsBtn").addEventListener("click", function () {
     // Виджеты рабочего стола (см. widgets.js) могут быть скрыты пользователем — если
