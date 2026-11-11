@@ -110,7 +110,7 @@ h1{margin:0 0 10px;font-size:var(--text-xl);line-height:1.1}
 .status-wait{background:var(--color-yellow-soft);color:#7A6300}
 .status-risk{background:var(--color-red-soft);color:#9E3D3D}
 .status-new{background:var(--color-blue-soft);color:var(--color-blue)}
-.section-title,.section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+.section-title,.section-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
 .section-title h2,.section-head h2{margin:0;font-size:var(--text-lg)}
 .section-title p,.section-head p{margin:4px 0 0;color:var(--color-text-muted);font-size:var(--text-sm)}
 .stack{display:grid;gap:14px}

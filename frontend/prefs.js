@@ -72,18 +72,37 @@
   }
 
   function getDashboardPrefs() {
+    var knownIds = DASHBOARD_WIDGETS.map(function (w) { return w.id; });
     var defaults = {
-      order: DASHBOARD_WIDGETS.map(function (w) { return w.id; }),
+      order: knownIds.slice(),
       hidden: [],
       wide: DASHBOARD_WIDGETS.filter(function (w) { return w.wide; }).map(function (w) { return w.id; }),
     };
     var stored = readJSON(DASHBOARD_STORAGE_KEY, null);
     if (!stored) return defaults;
+
     // Если в реестре появились новые виджеты уже после того, как пользователь
     // что-то сохранил — дописываем их в конец порядка, чтобы не потерялись.
-    var knownIds = DASHBOARD_WIDGETS.map(function (w) { return w.id; });
-    var order = (stored.order || []).filter(function (id) { return knownIds.indexOf(id) !== -1; });
+    var knownIdsSet = {};
+    knownIds.forEach(function (id) { knownIdsSet[id] = true; });
+    var storedOrder = Array.isArray(stored.order) ? stored.order : [];
+    var order = storedOrder.filter(function (id) { return knownIdsSet[id]; });
     knownIds.forEach(function (id) { if (order.indexOf(id) === -1) order.push(id); });
+
+    // Набор виджетов мог полностью перекроиться между версиями интерфейса (как при
+    // редизайне рабочего стола, когда часть id заменили на новые) — сохранённые
+    // hidden/wide для уже не существующих id ничего не говорят про НОВЫЕ виджеты,
+    // и без этой проверки новый wide:true-виджет из реестра молча становился бы
+    // узким (его id просто ещё не было в старом сохранённом массиве). Признак
+    // такого расхождения — набор id в сохранённом порядке не совпадает с текущим
+    // реестром; тогда hidden/wide берём из дефолтов заново, а порядок всё равно
+    // максимально сохраняем (см. order выше).
+    var registryChanged = storedOrder.length !== knownIds.length ||
+      storedOrder.some(function (id) { return !knownIdsSet[id]; });
+    if (registryChanged) {
+      return { order: order, hidden: [], wide: defaults.wide };
+    }
+
     return {
       order: order,
       hidden: Array.isArray(stored.hidden) ? stored.hidden : [],
