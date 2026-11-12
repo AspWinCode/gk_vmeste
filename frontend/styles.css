@@ -82,6 +82,10 @@ a{text-decoration:none;color:inherit}
 .top-actions{display:flex;align-items:center;gap:12px}
 .icon-btn,.avatar,.btn,.tab,.filter{min-height:44px;border-radius:14px;border:1px solid var(--color-border);background:var(--color-surface);color:var(--color-text);box-shadow:var(--shadow-sm)}
 .icon-btn{min-width:44px;display:grid;place-items:center}
+/* Видимая реакция на клик по кнопке обновления (⟳) — без неё перезапрос данных
+   проходит незаметно, если цифры на экране не изменились. */
+@keyframes icon-btn-spin{to{transform:rotate(360deg)}}
+.icon-btn.is-spinning{animation:icon-btn-spin .7s linear infinite}
 .mobile-nav-toggle{display:none;font-size:1.1rem}
 .sidebar-backdrop{position:fixed;inset:0;background:rgba(0,20,40,.45);z-index:25;opacity:0;pointer-events:none;transition:opacity .2s ease}
 .sidebar-backdrop.is-visible{opacity:1;pointer-events:auto}

@@ -546,9 +546,35 @@
     applyFilters();
   });
 
-  document.getElementById("headerRefreshBtn").addEventListener("click", loadDashboard);
+  // Кнопки обновления реально перезапрашивают дашборд (loadDashboard), но без видимой
+  // реакции на клик (спиннер/смена текста) это незаметно, особенно когда цифры не
+  // изменились, — выглядит так, будто кнопка не работает, хотя запрос уже ушёл.
+  var headerRefreshBtn = document.getElementById("headerRefreshBtn");
+  headerRefreshBtn.addEventListener("click", async function () {
+    headerRefreshBtn.classList.add("is-spinning");
+    headerRefreshBtn.disabled = true;
+    try {
+      await loadDashboard();
+    } finally {
+      headerRefreshBtn.classList.remove("is-spinning");
+      headerRefreshBtn.disabled = false;
+    }
+  });
+
   var sidebarRefreshBtn = document.getElementById("quickRefreshBtn");
-  if (sidebarRefreshBtn) sidebarRefreshBtn.addEventListener("click", loadDashboard);
+  if (sidebarRefreshBtn) {
+    sidebarRefreshBtn.addEventListener("click", async function () {
+      var originalText = sidebarRefreshBtn.textContent;
+      sidebarRefreshBtn.disabled = true;
+      sidebarRefreshBtn.textContent = "Обновление...";
+      try {
+        await loadDashboard();
+      } finally {
+        sidebarRefreshBtn.disabled = false;
+        sidebarRefreshBtn.textContent = originalText;
+      }
+    });
+  }
 
   document.getElementById("scrollToSignalsBtn").addEventListener("click", function () {
     // Виджеты рабочего стола (см. widgets.js) могут быть скрыты пользователем — если
