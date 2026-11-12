@@ -151,6 +151,9 @@ h1{margin:0 0 10px;font-size:var(--text-xl);line-height:1.1}
 
 /* dashboard */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+/* Для экранов с 3 показателями вместо 4 (например, Транскрибатор-референт) — те же
+   kpi-card, просто другое число равных колонок в строке. */
+.kpi-grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .kpi-card{padding:16px;border-radius:20px;border:1px solid var(--color-divider);background:var(--color-surface-2)}
 .kpi-card[role="button"]:hover{border-color:var(--color-primary)}
 .kpi-card strong{display:block;font-size:1.55rem;line-height:1;font-variant-numeric:tabular-nums}

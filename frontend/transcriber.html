@@ -52,15 +52,17 @@
       </header>
 
       <main class="main">
-        <section class="panel hero">
+        <section class="panel hero hero-compact" style="grid-template-columns:1fr">
           <div>
             <div class="eyebrow">Экран ассистента</div>
             <h1>Транскрибатор-референт</h1>
           </div>
-          <div class="summary" id="heroStats">
-            <div class="summary-item"><strong id="statTotal">—</strong><span>файлов обработано всего</span></div>
-            <div class="summary-item"><strong id="statActive">—</strong><span>файлов сейчас в очереди</span></div>
-            <div class="summary-item"><strong id="statTasks">—</strong><span>поручений извлечено</span></div>
+        </section>
+        <section class="panel section">
+          <div class="kpi-grid kpi-grid-3">
+            <div class="kpi-card"><strong id="statTotal">—</strong><span>файлов обработано всего</span></div>
+            <div class="kpi-card"><strong id="statActive">—</strong><span>файлов сейчас в очереди</span></div>
+            <div class="kpi-card"><strong id="statTasks">—</strong><span>поручений извлечено</span></div>
           </div>
         </section>
         <div id="apiWarning" class="footer-note" style="display:none;color:#9E3D3D">Не удаётся подключиться к backend по адресу <code id="apiWarningUrl"></code>. Проверьте, что API запущен (см. backend/README.md).</div>
