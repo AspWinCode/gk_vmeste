@@ -103,7 +103,12 @@
                 </select>
               </div>
 
-              <div class="field">
+              <!-- Скрыто: то же самое (email участников + справочник) уже есть ниже, в карточке
+                   результата обработки (participantEmailsList/contactPickerJob) — добавлять
+                   получателей удобнее там, когда уже видно, что за встреча и кто на ней был,
+                   а не вслепую перед загрузкой файла. Поле/пикер остаются в разметке (не
+                   удалены), чтобы не трогать логику uploadAudio() в transcriber.js. -->
+              <div class="field" style="display:none">
                 <label>Email участников (через запятую)</label>
                 <input class="input" id="participantEmails" name="participantEmails" placeholder="ivanov@vmeste.local, petrov@vmeste.local" />
                 <select class="select" id="contactPickerUpload" style="margin-top:8px">
