@@ -572,5 +572,95 @@
     document.getElementById("signalsList").scrollIntoView({ behavior: "smooth", block: "center" });
   });
 
+  // --- Диалог "Активные задачи по проектам" — открывается по клику на KPI-карточку,
+  // показывает полный список открытых поручений с пометкой просроченных, вместо того
+  // чтобы заставлять угадывать их по одной короткой цифре в бейдже карточки. Собран
+  // по образцу task-modal.js (тот же бэкдроп/панель), но без формы редактирования —
+  // это просто список, клик по строке передаёт открытие в уже существующий TaskModal.
+  var activeTasksBackdrop = null;
+
+  function ensureActiveTasksDialog() {
+    if (activeTasksBackdrop) return;
+    activeTasksBackdrop = document.createElement("div");
+    activeTasksBackdrop.className = "sidebar-backdrop task-modal-backdrop";
+    activeTasksBackdrop.addEventListener("click", function (e) {
+      if (e.target === activeTasksBackdrop) closeActiveTasksDialog();
+    });
+
+    var panel = document.createElement("div");
+    panel.className = "task-modal panel";
+    panel.innerHTML =
+      '<div class="task-modal-head">' +
+      '<strong style="font-size:var(--text-lg);flex:1">Активные задачи по проектам</strong>' +
+      '<button type="button" class="icon-btn" id="activeTasksCloseBtn" aria-label="Закрыть">✕</button>' +
+      "</div>" +
+      '<div class="footer-note" id="activeTasksSubtitle" style="margin:6px 0 14px"></div>' +
+      '<div class="calendar-list" id="activeTasksDialogList"></div>';
+
+    activeTasksBackdrop.appendChild(panel);
+    document.body.appendChild(activeTasksBackdrop);
+
+    document.getElementById("activeTasksCloseBtn").addEventListener("click", closeActiveTasksDialog);
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && activeTasksBackdrop.classList.contains("is-visible")) closeActiveTasksDialog();
+    });
+  }
+
+  function closeActiveTasksDialog() {
+    if (!activeTasksBackdrop) return;
+    activeTasksBackdrop.classList.remove("is-visible");
+    document.body.style.overflow = "";
+  }
+
+  function isOverdueTask(t) {
+    return !!(t.dueDate && daysFromNow(t.dueDate) < 0);
+  }
+
+  function openActiveTasksDialog() {
+    ensureActiveTasksDialog();
+    activeTasksBackdrop.classList.add("is-visible");
+    document.body.style.overflow = "hidden";
+
+    var tasks = state.tasks; // открытые задачи, уже загружены для рабочего стола
+    var overdueCount = tasks.filter(isOverdueTask).length;
+    document.getElementById("activeTasksSubtitle").textContent =
+      tasks.length + " активных задач" + (overdueCount > 0 ? ", из них просрочено: " + overdueCount : ", просроченных нет");
+
+    var sorted = tasks.slice().sort(function (a, b) {
+      var aOverdue = isOverdueTask(a), bOverdue = isOverdueTask(b);
+      if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
+      if (!a.dueDate && !b.dueDate) return new Date(a.createdAt) - new Date(b.createdAt);
+      if (!a.dueDate) return 1;
+      if (!b.dueDate) return -1;
+      return new Date(a.dueDate) - new Date(b.dueDate);
+    });
+
+    var listEl = document.getElementById("activeTasksDialogList");
+    if (sorted.length === 0) {
+      listEl.innerHTML = '<div class="footer-note">Активных задач нет.</div>';
+      return;
+    }
+    listEl.innerHTML = sorted.map(function (t) {
+      var overdue = isOverdueTask(t);
+      return (
+        '<div class="calendar-card task-card" data-task-id="' + t.id + '"><div><strong>' + esc(t.title) + "</strong><span>" +
+        (t.project ? "Проект: " + esc(t.project.name) + " · " : "") + "срок: " + fmtDue(t.dueDate) + "</span></div>" +
+        '<span class="status-chip ' + (overdue ? "status-risk" : "status-ok") + '">' + (overdue ? "просрочено" : "в срок") + "</span></div>"
+      );
+    }).join("");
+    Array.prototype.forEach.call(listEl.querySelectorAll("[data-task-id]"), function (card) {
+      card.addEventListener("click", function () {
+        closeActiveTasksDialog();
+        if (window.TaskModal) TaskModal.open(card.getAttribute("data-task-id"), refreshTasksOnly);
+      });
+    });
+  }
+
+  var kpiActiveTasksCard = document.getElementById("kpiActiveTasksCard");
+  kpiActiveTasksCard.addEventListener("click", openActiveTasksDialog);
+  kpiActiveTasksCard.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openActiveTasksDialog(); }
+  });
+
   loadDashboard();
 })();
