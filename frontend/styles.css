@@ -203,7 +203,11 @@ h1{margin:0 0 10px;font-size:var(--text-xl);line-height:1.1}
 .signal-card span,.feed-card span,.project-card span,.calendar-card span,.row-card span,.assistant-card span{overflow-wrap:anywhere}
 .signal-card strong,.feed-card strong,.project-card strong,.calendar-card strong,.assistant-card strong,.row-card strong{display:block;font-size:var(--text-sm)}
 .signal-card span,.feed-card span,.project-card span,.calendar-card span,.assistant-card span,.row-card span{display:block;font-size:var(--text-xs);color:var(--color-text-muted);margin-top:4px;line-height:1.5}
-.mini-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+/* auto-fit вместо жёстких repeat(3,...) — карточка проекта переиспользуется и в узких
+   виджетах ("Мои приоритеты" → вкладка "Проекты"), где на 3 равные колонки места не
+   хватает и текст показателей сплющивается в одну букву на строку; auto-fit сам
+   переносит показатели на следующую строку, когда ширины не хватает. */
+.mini-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:10px;margin-top:12px}
 .mini-box{padding:12px;border-radius:16px;background:var(--color-surface);border:1px solid var(--color-divider)}
 .mini-box strong{display:block;font-size:var(--text-sm)}
 .mini-box span{display:block;font-size:var(--text-xs);color:var(--color-text-muted);margin-top:4px}
