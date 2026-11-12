@@ -125,18 +125,12 @@
 
     renderDirectionsTable();
     applyFilters();
-    noteUpdated();
   }
 
   function renderKpiBadge(id, text, chipClass) {
     var el = document.getElementById(id);
     el.textContent = text;
     el.className = "status-chip " + chipClass;
-  }
-
-  function noteUpdated() {
-    var el = document.getElementById("lastUpdatedNote");
-    if (el) el.textContent = "Обновлено сегодня в " + new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
   }
 
   // Точечное обновление после правки/удаления ОДНОЙ задачи в карточке (task-modal.js) —
@@ -264,7 +258,7 @@
     badge.textContent = items.length;
     badge.className = "status-chip " + (items.length > 0 ? "status-risk" : "status-new");
     if (items.length === 0) {
-      el.innerHTML = '<div class="signal-card"><div><strong>Нет критических сигналов</strong><span>Риски и отклонения под контролем.</span></div><span class="status-chip status-ok">✓</span></div>';
+      el.innerHTML = '<div class="signal-card"><div><strong>Нет критических сигналов</strong></div><span class="status-chip status-ok">✓</span></div>';
       return;
     }
     el.innerHTML = items.slice(0, 4).map(function (i) {
@@ -474,7 +468,7 @@
       .slice(0, 6);
 
     if (rows.length === 0) {
-      body.innerHTML = '<tr><td colspan="3" class="footer-note">Пока нет проектов с поручениями.</td></tr>';
+      body.innerHTML = '<tr><td colspan="3" class="footer-note" style="text-align:center">—</td></tr>';
       return;
     }
     body.innerHTML = rows.map(function (r) {

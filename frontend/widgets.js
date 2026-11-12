@@ -95,8 +95,16 @@
   widgets.forEach(function (el) {
     var id = el.getAttribute("data-widget-id");
 
+    // Подтверждение перед скрытием — кнопка маленькая и стоит рядом с другими иконками
+    // виджета (перетащить/ширина), случайный клик мимо легко скрывает виджет без
+    // возможности сразу отменить (вернуть можно только через "Настройки").
     var hideBtn = el.querySelector(".widget-hide-btn");
-    if (hideBtn) hideBtn.addEventListener("click", function () { hideWidget(id); });
+    if (hideBtn) hideBtn.addEventListener("click", function () {
+      var widgetDef = Prefs.DASHBOARD_WIDGETS.filter(function (w) { return w.id === id; })[0];
+      var label = widgetDef ? widgetDef.label : "этот виджет";
+      if (!confirm("Скрыть виджет «" + label + "»? Вернуть его можно в Настройках → «Виджеты рабочего стола».")) return;
+      hideWidget(id);
+    });
 
     var wideBtn = el.querySelector(".widget-wide-toggle");
     if (wideBtn) wideBtn.addEventListener("click", function () { toggleWide(id); });
