@@ -80,6 +80,34 @@ export async function analyzeMeetingTranscript(
   };
 }
 
+export interface ContentIdea {
+  title: string;
+  topic: string; // "о чём рассказать"
+}
+
+// Контент-план СММщика — темы постов/рилсов, которые реально можно сделать из того, что
+// прозвучало на встрече (проекты, акции, новости, события), а не общие маркетинговые
+// советы. Отдельный вызов от analyzeMeetingTranscript — другая задача и другой читатель
+// результата (не руководитель, а СММщик), смешивать в одну JSON-форму не нужно.
+export async function generateContentIdeas(transcript: string): Promise<ContentIdea[]> {
+  const raw = await requestStructuredJson<{ ideas?: Partial<ContentIdea>[] }>({
+    maxTokens: 3000,
+    system:
+      `Ты — СММщик группы компаний "ВМЕСТЕ". ${COMPANY_CONTEXT}\n` +
+      `Тебе дают расшифровку совещания/звонка. Найди в ней всё, из чего реально можно сделать пост или рилс ` +
+      `для соцсетей (новый проект, акция, этап стройки, событие, цифры, интересный факт, изменение условий ` +
+      `покупки и т.п.) — только то, что действительно прозвучало в тексте, ничего не выдумывай. Если в ` +
+      `расшифровке нет подходящих поводов для контента — верни пустой список, а не притянутые темы.\n\n` +
+      `Ответь СТРОГО валидным JSON без markdown-разметки и без пояснений вокруг, ровно в этой форме:\n` +
+      `{"ideas": [{"title": "короткий рабочий заголовок поста/рилса", "topic": "о чём конкретно рассказать, 1-2 предложения"}]}`,
+    userContent: transcript,
+  });
+
+  return (raw.ideas ?? [])
+    .filter((i): i is ContentIdea => !!i.title && !!i.topic)
+    .map((i) => ({ title: i.title, topic: i.topic }));
+}
+
 export interface FinanceScenarioForReview {
   usageType: string;
   saleAreaSqm: number;

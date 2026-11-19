@@ -3,7 +3,7 @@ import { Worker } from "bullmq";
 import { connection, TranscriptionJobData } from "./queue";
 import { prisma } from "../lib/prisma";
 import { getSpeechToTextProvider } from "../services/speechToText";
-import { analyzeMeetingTranscript } from "../services/claude";
+import { analyzeMeetingTranscript, generateContentIdeas } from "../services/claude";
 import { notify } from "../services/notify";
 
 // Отдельный процесс: `npm run worker`. Разнесён от HTTP-сервера, чтобы долгая
@@ -73,6 +73,22 @@ const worker = new Worker<TranscriptionJobData>(
             source: `transcriber:${jobId}`,
           })),
         });
+      }
+
+      // Темы для СММщика — отдельный шаг ПОСЛЕ того, как основная задача уже отмечена DONE
+      // (расшифровка/саммари/поручения сохранены). Намеренно в своём try/catch, а не в общем
+      // потоке: сбой здесь (как и невалидная dueDate раньше, см. parseDueDate выше) не должен
+      // откатывать уже готовый результат транскрибации в FAILED — контент-план необязателен,
+      // расшифровка нет.
+      try {
+        const ideas = await generateContentIdeas(transcription.fullText);
+        if (ideas.length > 0) {
+          await prisma.contentIdea.createMany({
+            data: ideas.map((i) => ({ title: i.title, topic: i.topic, jobId })),
+          });
+        }
+      } catch (err) {
+        console.error(`[worker] job ${job.id}: не удалось сгенерировать контент-план:`, err instanceof Error ? err.message : err);
       }
 
       await notify({

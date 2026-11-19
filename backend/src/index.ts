@@ -19,6 +19,7 @@ import { notificationsRouter } from "./routes/notifications";
 import { reportsRouter } from "./routes/reports";
 import { usersRouter } from "./routes/users";
 import { contactsRouter } from "./routes/contacts";
+import { contentIdeasRouter } from "./routes/contentIdeas";
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use("/api/notifications", notificationsRouter);
 app.use("/api/reports", reportsRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/contacts", contactsRouter);
+app.use("/api/content-ideas", contentIdeasRouter);
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);

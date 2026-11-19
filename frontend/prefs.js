@@ -15,6 +15,7 @@
     { id: "assistants", label: "Каталог ассистентов" },
     { id: "finance", label: "Финансовый аналитик" },
     { id: "transcriber", label: "Транскрибатор-референт" },
+    { id: "smm", label: "СММщик Админа" },
     { id: "ksg", label: "Контроль КСГ" },
     { id: "land", label: "Земля и объекты" },
     { id: "support", label: "Меры поддержки" },

@@ -161,8 +161,26 @@ model TranscriptionJob {
   createdBy  User?    @relation("JobCreatedBy", fields: [createdById], references: [id])
   createdById String?
 
+  contentIdeas ContentIdea[]
+
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+// Контент-план СММщика — темы постов/рилсов, которые Claude предлагает по расшифровке
+// встречи (см. generateContentIdeas в claude.ts). Отдельная модель, а не поле на
+// TranscriptionJob — с одной расшифровки обычно выходит несколько тем, и у каждой
+// свой независимый статус "выложено".
+model ContentIdea {
+  id        String   @id @default(cuid())
+  title     String
+  topic     String // "о чём рассказать"
+  published Boolean  @default(false)
+
+  job       TranscriptionJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  jobId     String
+
+  createdAt DateTime @default(now())
 }
 
 model KsgStage {
