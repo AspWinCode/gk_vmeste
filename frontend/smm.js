@@ -1,6 +1,6 @@
 (function () {
   var esc = window.escHtml; // общий хелпер, см. util.js
-  var state = { ideas: [], filter: "", query: "" };
+  var state = { ideas: [], filter: "", query: "", telegramConnected: false };
 
   function showApiWarning(show) {
     var box = document.getElementById("apiWarning");
@@ -11,6 +11,19 @@
   function fmtDate(iso) {
     if (!iso) return "—";
     return new Date(iso).toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" });
+  }
+
+  // Публикация работает только если в Настройках подключён Telegram (см.
+  // settings.js/settings.html, секция "Интеграции") — запрашиваем статус отдельно,
+  // чтобы кнопка "Опубликовать" сразу показывала актуальное состояние, а не узнавала
+  // об отсутствии канала только после клика и ошибки от backend.
+  async function loadTelegramStatus() {
+    try {
+      var res = await Auth.apiFetch("/integrations");
+      if (!res.ok) return;
+      var integrations = await res.json();
+      state.telegramConnected = integrations.some(function (i) { return i.type === "TELEGRAM"; });
+    } catch (e) {}
   }
 
   async function loadIdeas() {
@@ -44,11 +57,11 @@
     var visible = state.ideas.filter(matchesFilters);
 
     if (state.ideas.length === 0) {
-      body.innerHTML = '<tr><td colspan="4" class="footer-note">Темы появятся здесь сами после обработки записей в Транскрибаторе-референте.</td></tr>';
+      body.innerHTML = '<tr><td colspan="5" class="footer-note">Темы появятся здесь сами после обработки записей в Транскрибаторе-референте.</td></tr>';
       return;
     }
     if (visible.length === 0) {
-      body.innerHTML = '<tr><td colspan="4" class="footer-note">Ничего не найдено по текущему фильтру.</td></tr>';
+      body.innerHTML = '<tr><td colspan="5" class="footer-note">Ничего не найдено по текущему фильтру.</td></tr>';
       return;
     }
 
@@ -56,11 +69,16 @@
       var source = idea.job
         ? esc(idea.job.subject || idea.job.audioFileName) + '<br/><span class="footer-note">' + fmtDate(idea.job.createdAt) + "</span>"
         : "—";
+      var publishBtn = state.telegramConnected
+        ? '<button type="button" class="btn btn-secondary btn-sm" data-publish-id="' + idea.id + '">' +
+          (idea.published ? "Опубликовать ещё раз" : "Опубликовать") + "</button>"
+        : '<span class="footer-note">Подключите Telegram в Настройках</span>';
       return (
         "<tr" + (idea.published ? ' style="opacity:.6"' : "") + ">" +
         "<td><strong>" + esc(idea.title) + "</strong></td>" +
         "<td>" + esc(idea.topic) + "</td>" +
         "<td>" + source + "</td>" +
+        "<td>" + publishBtn + "</td>" +
         '<td><input type="checkbox" data-idea-id="' + idea.id + '"' + (idea.published ? " checked" : "") +
         ' style="width:18px;height:18px;accent-color:var(--color-primary);cursor:pointer" aria-label="Отметить выложенным" /></td>' +
         "</tr>"
@@ -88,6 +106,31 @@
         }
       });
     });
+
+    Array.prototype.forEach.call(body.querySelectorAll("[data-publish-id]"), function (btn) {
+      btn.addEventListener("click", async function () {
+        var id = btn.getAttribute("data-publish-id");
+        var idea = state.ideas.find(function (i) { return i.id === id; });
+        if (!idea) return;
+        if (!confirm('Опубликовать тему «' + idea.title + '» в подключённый Telegram-канал прямо сейчас?')) return;
+        btn.disabled = true;
+        btn.textContent = "Публикуем...";
+        try {
+          var res = await Auth.apiFetch("/content-ideas/" + id + "/publish", { method: "POST" });
+          var data = await res.json();
+          if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : JSON.stringify(data.error) || "Не удалось опубликовать");
+          idea.published = true;
+          var published = state.ideas.filter(function (i) { return i.published; }).length;
+          document.getElementById("statPending").textContent = state.ideas.length - published;
+          document.getElementById("statPublished").textContent = published;
+          renderTable();
+        } catch (e) {
+          alert(e.message);
+          btn.disabled = false;
+          btn.textContent = idea.published ? "Опубликовать ещё раз" : "Опубликовать";
+        }
+      });
+    });
   }
 
   Array.prototype.forEach.call(document.querySelectorAll("#statusFilters .filter"), function (btn) {
@@ -103,5 +146,5 @@
     renderTable();
   });
 
-  loadIdeas();
+  loadTelegramStatus().then(loadIdeas);
 })();

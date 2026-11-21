@@ -100,6 +100,39 @@
 
         <section class="panel section">
           <div class="section-head">
+            <div><h2>Интеграции</h2><p>Каналы для автопубликации из СММщика (см. «СММщик Админа»)</p></div>
+          </div>
+          <div class="row-card" style="align-items:center">
+            <div style="min-width:0">
+              <strong>Telegram-канал</strong>
+              <span id="telegramStatus">Загрузка...</span>
+            </div>
+            <button type="button" class="btn btn-secondary" id="telegramDisconnectBtn" style="display:none">Отключить</button>
+          </div>
+          <form id="telegramForm" class="form-grid" style="margin-top:14px">
+            <div class="field">
+              <label>Токен бота</label>
+              <input class="input" id="telegramBotToken" placeholder="123456:AA...получите у @BotFather" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label>Канал (@username или ID)</label>
+              <input class="input" id="telegramChannelId" placeholder="@my_channel" />
+            </div>
+            <button class="btn btn-primary" type="submit" style="grid-column:1/-1;justify-content:center">Подключить Telegram</button>
+            <div id="telegramFormError" class="footer-note" style="color:#9E3D3D;display:none;grid-column:1/-1"></div>
+          </form>
+          <details style="margin-top:12px">
+            <summary class="footer-note">Как создать бота и получить токен?</summary>
+            <ol class="compact-list" style="margin-top:10px">
+              <li>В Telegram откройте <strong>@BotFather</strong>, отправьте <code>/newbot</code> и следуйте подсказкам — в конце он пришлёт токен вида <code>123456:AA...</code>.</li>
+              <li>Добавьте этого бота администратором в нужный канал (Настройки канала → Администраторы → Добавить) с правом публикации постов.</li>
+              <li>Укажите здесь токен и @username канала (или его числовой ID, если канал приватный) и нажмите «Подключить».</li>
+            </ol>
+          </details>
+        </section>
+
+        <section class="panel section">
+          <div class="section-head">
             <div><h2>Пользователи и роли</h2><p>Кто есть в системе и с какой ролью</p></div>
           </div>
           <div class="table-wrap">

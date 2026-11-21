@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../middleware/auth";
+import { sendTelegramMessage } from "../services/telegram";
 
 export const contentIdeasRouter = Router();
 contentIdeasRouter.use(requireAuth);
@@ -32,4 +33,29 @@ contentIdeasRouter.patch("/:id", async (req, res) => {
     data: { published: parsed.data.published },
   });
   res.json(idea);
+});
+
+// POST /api/content-ideas/:id/publish — кнопка "Опубликовать" в таблице контент-плана.
+// Только Telegram пока (см. Integration.type) — Instagram Graph API требует картинку/видео
+// на каждый пост, а тема контент-плана сейчас это просто заголовок+текст.
+contentIdeasRouter.post("/:id/publish", async (req, res) => {
+  const idea = await prisma.contentIdea.findUnique({ where: { id: req.params.id } });
+  if (!idea) return res.status(404).json({ error: "Тема не найдена" });
+
+  const integration = await prisma.integration.findUnique({ where: { type: "TELEGRAM" } });
+  if (!integration) return res.status(409).json({ error: "Telegram не подключён — настройте канал в Настройках → Интеграции." });
+
+  const config = integration.config as { botToken: string; channelId: string };
+  // Без markdown-разметки намеренно — parse_mode у Telegram валит весь запрос, если в
+  // заголовке/тексте случайно встретится "_"/"*"/другой спецсимвол разметки, который
+  // никто не экранировал; обычный текст работает всегда.
+  const text = `${idea.title}\n\n${idea.topic}`;
+  try {
+    await sendTelegramMessage(config.botToken, config.channelId, text);
+  } catch (err) {
+    return res.status(502).json({ error: "Не удалось отправить в Telegram: " + (err instanceof Error ? err.message : String(err)) });
+  }
+
+  const updated = await prisma.contentIdea.update({ where: { id: idea.id }, data: { published: true } });
+  res.json(updated);
 });

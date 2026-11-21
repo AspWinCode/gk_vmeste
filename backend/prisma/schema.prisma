@@ -183,6 +183,19 @@ model ContentIdea {
   createdAt DateTime @default(now())
 }
 
+// Подключённые каналы для автопубликации из СММщика. Один аккаунт на всех (см.
+// комментарий у "СММщик Админа" в index.html) — поэтому одна запись на тип канала,
+// а не привязка к конкретному пользователю. config хранит то, что нужно конкретному
+// каналу для публикации (у Telegram — botToken/channelId/botUsername); под Instagram
+// позже заведётся второй type со своим набором полей в том же config.
+model Integration {
+  id        String   @id @default(cuid())
+  type      String   @unique // "TELEGRAM" (позже — "INSTAGRAM")
+  config    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model KsgStage {
   id           String   @id @default(cuid())
   project      Project  @relation(fields: [projectId], references: [id])

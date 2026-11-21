@@ -219,10 +219,73 @@
     } catch (e) {}
   }
 
+  // --- Интеграции (Telegram-канал для автопубликации из СММщика) ---
+
+  async function loadIntegrations() {
+    var statusEl = document.getElementById("telegramStatus");
+    var disconnectBtn = document.getElementById("telegramDisconnectBtn");
+    try {
+      var res = await Auth.apiFetch("/integrations");
+      if (!res.ok) throw new Error("bad status");
+      var integrations = await res.json();
+      var telegram = integrations.find(function (i) { return i.type === "TELEGRAM"; });
+      if (telegram) {
+        statusEl.textContent = "Подключён: @" + telegram.botUsername + " → " + telegram.channelId + " (" + telegram.botTokenMasked + ")";
+        statusEl.className = "footer-note";
+        disconnectBtn.style.display = "";
+      } else {
+        statusEl.textContent = "Не подключён";
+        statusEl.className = "footer-note";
+        disconnectBtn.style.display = "none";
+      }
+    } catch (e) {
+      statusEl.textContent = "Не удалось загрузить статус интеграций";
+    }
+  }
+
+  var telegramForm = document.getElementById("telegramForm");
+  if (telegramForm) {
+    telegramForm.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var errorBox = document.getElementById("telegramFormError");
+      errorBox.style.display = "none";
+      var submitBtn = telegramForm.querySelector("button[type=submit]");
+      var payload = {
+        botToken: document.getElementById("telegramBotToken").value.trim(),
+        channelId: document.getElementById("telegramChannelId").value.trim(),
+      };
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Проверяем токен...";
+      try {
+        var res = await Auth.apiFetch("/integrations/telegram", { method: "POST", body: payload });
+        var data = await res.json();
+        if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : JSON.stringify(data.error) || "Не удалось подключить канал");
+        telegramForm.reset();
+        loadIntegrations();
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.style.display = "block";
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Подключить Telegram";
+      }
+    });
+  }
+
+  var telegramDisconnectBtn = document.getElementById("telegramDisconnectBtn");
+  if (telegramDisconnectBtn) {
+    telegramDisconnectBtn.addEventListener("click", async function () {
+      if (!confirm("Отключить Telegram-канал? Автопубликация из СММщика перестанет работать, пока не подключите заново.")) return;
+      await Auth.apiFetch("/integrations/TELEGRAM", { method: "DELETE" });
+      loadIntegrations();
+    });
+  }
+
   renderProfile();
   loadUsers();
   renderNavToggles();
   renderWidgetToggles();
   loadContacts();
   loadTranscripts();
+  loadIntegrations();
 })();
